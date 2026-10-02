@@ -1,0 +1,13 @@
+import {Router} from 'express';
+import {body,query} from 'express-validator';
+import {authenticate,therapistOnly} from '../middleware/authMiddleware.js';
+import {requireFeature} from '../middleware/entitlementMiddleware.js';
+import {validate} from '../middleware/validate.js';
+import {assertWeekly} from '../services/schedulingService.js';
+import {getAvailability,saveWeekly,slots} from '../controllers/schedulingController.js';
+export const publicScheduling=Router();
+publicScheduling.get('/:slug/slots',query('from').isDate({format:'YYYY-MM-DD'}),query('to').isDate({format:'YYYY-MM-DD'}),query('duration').isInt().isIn([30,45,60,90]),validate,slots);
+const router=Router();router.use(authenticate,therapistOnly,requireFeature('scheduling'));
+router.get('/availability',getAvailability);
+router.put('/availability/weekly',body('weekly').custom(assertWeekly),body('timezone').optional().custom(v=>{new Intl.DateTimeFormat('en',{timeZone:v});return true;}),validate,saveWeekly);
+export default router;

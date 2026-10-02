@@ -56,3 +56,10 @@ test('branded HTML includes escaped Open Graph metadata before JavaScript execut
  const access=await request(app).get('/api/therapists/entitlements').set('Authorization',`Bearer ${token}`).expect(200);
  assert.equal(access.body.features.scheduling,true);
 });
+test('recurring weekly availability converts India times to UTC',async()=>{
+ await request(app).put('/api/scheduling/availability/weekly').set('Authorization',`Bearer ${token}`).send({timezone:'Asia/Kolkata',weekly:[{day:1,windows:[{start:'09:00',end:'17:00'}]}]}).expect(200);
+ const {body}=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);
+ assert.ok(body.slots.length);assert.equal(body.slots[0].start,'2030-01-07T03:30:00.000Z');
+ await request(app).put('/api/scheduling/availability/weekly').set('Authorization',`Bearer ${token}`).send({weekly:[{day:1,windows:[{start:'17:00',end:'09:00'}]}]}).expect(400);
+ await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-01&to=2031-01-01&duration=60').expect(400);
+});
