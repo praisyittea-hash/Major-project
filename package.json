@@ -1,0 +1,22 @@
+{
+  "name": "unfazed",
+  "private": true,
+  "workspaces": [
+    "unfazed-backend",
+    "unfazed-frontend"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build -w unfazed-frontend",
+    "lint": "npm run lint --workspaces --if-present",
+    "dev:api": "npm run dev -w unfazed-backend",
+    "dev:web": "npm run dev -w unfazed-frontend"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^17.13.0"
+  },
+  "type": "module"
+}
