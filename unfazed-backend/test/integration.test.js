@@ -110,3 +110,16 @@ test('booking capability is scoped; cancellation persists waitlist notification 
  const jobs=await NotificationJob.find();assert.equal(jobs[0].status,'stubbed');
  const slots=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);assert.ok(slots.body.slots.some(s=>s.start===bookedStart));
 });
+import Client from '../src/models/Client.js';
+let clientId;
+test('client CRUD persists tenant-owned records and archives instead of deleting',async()=>{
+ const auth={Authorization:`Bearer ${token}`};
+ const created=await request(app).post('/api/clients').set(auth).send({name:'Ananya Rao',email:'ananya@example.test',tags:[{label:'Online'}]}).expect(201);clientId=created.body.client._id;
+ await request(app).get(`/api/clients/${clientId}`).expect(401);
+ const second=await request(app).post('/api/auth/login').send({...credentials,email:'second@example.test'}).expect(200);
+ await request(app).get(`/api/clients/${clientId}`).set('Authorization',`Bearer ${second.body.token}`).expect(404);
+ await request(app).patch(`/api/clients/${clientId}`).set(auth).send({name:'Ananya R',therapist:second.body.therapist._id}).expect(200);
+ const client=await Client.findById(clientId);assert.equal(String(client.therapist),(await Therapist.findOne({email:credentials.email})).id);
+ await request(app).delete(`/api/clients/${clientId}`).set(auth).expect(200);assert.equal((await Client.findById(clientId)).status,'archived');
+ await request(app).patch(`/api/clients/${clientId}`).set(auth).send({name:'Ananya Rao',status:'active'}).expect(200);
+});
