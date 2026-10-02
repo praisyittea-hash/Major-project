@@ -123,3 +123,10 @@ test('client CRUD persists tenant-owned records and archives instead of deleting
  await request(app).delete(`/api/clients/${clientId}`).set(auth).expect(200);assert.equal((await Client.findById(clientId)).status,'archived');
  await request(app).patch(`/api/clients/${clientId}`).set(auth).send({name:'Ananya Rao',status:'active'}).expect(200);
 });
+test('client sorting, filtering and pagination are tenant-scoped and bounded',async()=>{
+ const auth={Authorization:`Bearer ${token}`};
+ await request(app).post('/api/clients').set(auth).send({name:'Zoya Khan',email:'zoya@example.test',status:'inactive',tags:[{label:'In person'}]}).expect(201);
+ const filtered=await request(app).get('/api/clients?status=active&tag=Online&search=Ananya').set(auth).expect(200);assert.equal(filtered.body.total,1);assert.equal(filtered.body.clients[0]._id,clientId);
+ const sorted=await request(app).get('/api/clients?sort=name&direction=desc&limit=1').set(auth).expect(200);assert.equal(sorted.body.clients[0].name,'Zoya Khan');
+ await request(app).get('/api/clients?limit=10000').set(auth).expect(400);
+});
