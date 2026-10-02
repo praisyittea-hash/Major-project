@@ -1,0 +1,10 @@
+import {Router} from 'express';
+import {body} from 'express-validator';
+import {rateLimit} from 'express-rate-limit';
+import {register} from '../controllers/authController.js';
+import {validate} from '../middleware/validate.js';
+const router=Router();
+router.use(rateLimit({windowMs:15*60*1000,limit:50,skip:()=>process.env.NODE_ENV==='test'}));
+export const emailRule=()=>body('email').isEmail().withMessage('Valid email required').trim().toLowerCase();
+router.post('/register',emailRule(),body('name').isString().trim().isLength({min:2,max:100}),body('password').isString().isLength({min:10,max:72}),validate,register);
+export default router;

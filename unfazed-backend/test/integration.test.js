@@ -1,0 +1,23 @@
+import {test,before,after} from 'node:test';
+import assert from 'node:assert/strict';
+import bcrypt from 'bcryptjs';
+import request from 'supertest';
+import {database} from './helpers.js';
+import {app} from '../src/app.js';
+import Therapist from '../src/models/Therapist.js';
+process.env.NODE_ENV='test';
+process.env.JWT_SECRET='isolated-test-secret-never-used-in-production';
+let close;
+before(async()=>{close=await database();await Therapist.init();});
+after(async()=>{if(close)await close();});
+const credentials={name:'Dr Meera Sharma',email:'meera@example.test',password:'Safe-testing-password!'};
+export let token;
+test('register persists bcrypt hash and rejects duplicate/invalid accounts',async()=>{
+ const result=await request(app).post('/api/auth/register').send(credentials).expect(201);
+ assert.equal(result.body.therapist.password_hash,undefined);
+ const record=await Therapist.findOne({email:credentials.email}).select('+password_hash');
+ assert.notEqual(record.password_hash,credentials.password);
+ assert.ok(await bcrypt.compare(credentials.password,record.password_hash));
+ await request(app).post('/api/auth/register').send(credentials).expect(409);
+ await request(app).post('/api/auth/register').send({email:'invalid',password:'short'}).expect(400);
+});
