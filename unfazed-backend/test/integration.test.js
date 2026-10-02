@@ -79,3 +79,14 @@ test('all session durations and configured buffer fit inside availability window
  const enabled=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);assert.ok(enabled.body.slots.every(s=>new Date(s.end).getTime()+30*60000<=new Date('2030-01-07T11:30:00Z').getTime()));
  await request(app).put('/api/scheduling/availability/settings').set('Authorization',`Bearer ${token}`).send({durations:[30,45,60,90],bufferMinutes:10}).expect(200);
 });
+let bookingId,bookingToken,bookedStart;
+test('booking persists session and instantly removes occupied times',async()=>{
+ const therapist=await Therapist.findOne({email:credentials.email});
+ const before=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);
+ bookedStart=before.body.slots[0].start;
+ const {body}=await request(app).post('/api/public/dr-meera-sharma/book').send({serviceId:therapist.services[0].id,start:bookedStart,name:'Ananya Rao',email:'ananya@example.test'}).expect(201);
+ bookingId=body.session._id;bookingToken=body.bookingToken;assert.equal(body.session.status,'confirmed');assert.ok(bookingToken);
+ const after=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);assert.ok(!after.body.slots.some(s=>s.start===bookedStart));
+ await request(app).get('/api/scheduling/sessions').expect(401);
+ const list=await request(app).get('/api/scheduling/sessions').set('Authorization',`Bearer ${token}`).expect(200);assert.equal(list.body.sessions[0]._id,bookingId);
+});

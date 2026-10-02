@@ -1,3 +1,6 @@
+import {formatInTimeZone} from 'date-fns-tz';
+import Session from '../models/Session.js';
+import {issueToken} from '../services/tokenService.js';
 import Availability from '../models/Availability.js';
 import Therapist from '../models/Therapist.js';
 import {availableSlots} from '../services/schedulingService.js';
@@ -15,3 +18,14 @@ export async function saveExceptions(req,res){
 export async function saveSettings(req,res){
  const availability=await Availability.findOneAndUpdate({therapist:req.therapist.id},{$set:{durations:req.body.durations,bufferMinutes:req.body.bufferMinutes},$inc:{revision:1}},{upsert:true,new:true,runValidators:true});res.json({availability});
 }
+export async function book(req,res){
+ const therapist=await practice(req),service=therapist.services.id(req.body.serviceId);
+ if(!service)throw new HttpError(400,'Select a published service');
+ const start=new Date(req.body.start),date=formatInTimeZone(start,therapist.timezone,'yyyy-MM-dd');
+ const offered=await availableSlots(therapist.id,date,date,service.duration);
+ if(!offered.some(s=>s.start===start.toISOString()))throw new HttpError(409,'This time is no longer available');
+ const availability=await Availability.findOne({therapist:therapist.id});
+ const session=await Session.create({therapist:therapist.id,contact:{name:req.body.name,email:req.body.email},serviceId:service.id,start,end:new Date(start.getTime()+service.duration*60000),duration:service.duration,bufferMinutes:availability.bufferMinutes,rate:service.rate});
+ res.status(201).json({session,bookingToken:issueToken(session.id,'booking',{therapistId:therapist.id})});
+}
+export async function sessions(req,res){res.json({sessions:await Session.find({therapist:req.therapist.id}).sort({start:1}).limit(500)});}

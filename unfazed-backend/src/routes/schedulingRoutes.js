@@ -4,10 +4,12 @@ import {authenticate,therapistOnly} from '../middleware/authMiddleware.js';
 import {requireFeature} from '../middleware/entitlementMiddleware.js';
 import {validate} from '../middleware/validate.js';
 import {assertWeekly,assertWindows} from '../services/schedulingService.js';
-import {getAvailability,saveWeekly,slots,saveExceptions,saveSettings} from '../controllers/schedulingController.js';
+import {getAvailability,saveWeekly,slots,saveExceptions,saveSettings,book,sessions} from '../controllers/schedulingController.js';
 export const publicScheduling=Router();
 publicScheduling.get('/:slug/slots',query('from').isDate({format:'YYYY-MM-DD'}),query('to').isDate({format:'YYYY-MM-DD'}),query('duration').isInt().isIn([30,45,60,90]),validate,slots);
+publicScheduling.post('/:slug/book',body('serviceId').isMongoId(),body('start').isISO8601({strict:true}),body('name').isString().trim().isLength({min:2,max:100}),body('email').isEmail().trim().toLowerCase(),validate,book);
 const router=Router();router.use(authenticate,therapistOnly,requireFeature('scheduling'));
+router.get('/sessions',sessions);
 router.get('/availability',getAvailability);
 router.put('/availability/weekly',body('weekly').custom(assertWeekly),body('timezone').optional().custom(v=>{new Intl.DateTimeFormat('en',{timeZone:v});return true;}),validate,saveWeekly);
 router.put('/availability/exceptions',
