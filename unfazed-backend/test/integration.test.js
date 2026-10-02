@@ -21,3 +21,12 @@ test('register persists bcrypt hash and rejects duplicate/invalid accounts',asyn
  await request(app).post('/api/auth/register').send(credentials).expect(409);
  await request(app).post('/api/auth/register').send({email:'invalid',password:'short'}).expect(400);
 });
+test('JWT login and protected account access',async()=>{
+ await request(app).post('/api/auth/login').send({...credentials,password:'wrong'}).expect(401);
+ const result=await request(app).post('/api/auth/login').send(credentials).expect(200);token=result.body.token;
+ assert.ok(token);assert.equal(result.body.therapist.password_hash,undefined);
+ await request(app).get('/api/auth/me').expect(401);
+ await request(app).get('/api/auth/me').set('Authorization','Bearer invalid').expect(401);
+ const me=await request(app).get('/api/auth/me').set('Authorization',`Bearer ${token}`).expect(200);
+ assert.equal(me.body.therapist.email,credentials.email);
+});
