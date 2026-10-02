@@ -130,3 +130,10 @@ test('client sorting, filtering and pagination are tenant-scoped and bounded',as
  const sorted=await request(app).get('/api/clients?sort=name&direction=desc&limit=1').set(auth).expect(200);assert.equal(sorted.body.clients[0].name,'Zoya Khan');
  await request(app).get('/api/clients?limit=10000').set(auth).expect(400);
 });
+import Session from '../src/models/Session.js';
+test('client history and last-session sorting use the owned client reference',async()=>{
+ const client=await Client.findById(clientId);
+ await Session.create({therapist:client.therapist,client:client.id,contact:{name:client.name,email:client.email},start:new Date('2020-01-01T04:30:00Z'),end:new Date('2020-01-01T05:30:00Z'),duration:60,status:'completed'});
+ const history=await request(app).get(`/api/clients/${clientId}/history`).set('Authorization',`Bearer ${token}`).expect(200);assert.equal(history.body.sessions.length,1);
+ const list=await request(app).get('/api/clients?sort=lastSession&direction=desc').set('Authorization',`Bearer ${token}`).expect(200);assert.equal(list.body.clients[0]._id,clientId);assert.ok(list.body.clients[0].lastSession);assert.equal(list.body.clients[0].intake,undefined);
+});
