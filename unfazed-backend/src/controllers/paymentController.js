@@ -1,4 +1,5 @@
 import {sessionOrder,ownedPayment,gatewayFor} from '../services/paymentService.js';
+import {generateInvoice} from '../services/invoiceService.js';
 import Payment from '../models/Payment.js';
 import Session from '../models/Session.js';
 import {HttpError} from '../middleware/errorHandler.js';
@@ -16,3 +17,4 @@ export async function verifyPayment(req,res){
  res.json({payment:updated||await Payment.findById(payment.id),message:'Verified. Awaiting webhook confirmation.'});
 }
 export async function listPayments(req,res){res.json({payments:await Payment.find({therapist:req.therapist.id}).sort({createdAt:-1}).limit(200)});}
+export async function downloadInvoice(req,res){const payment=await ownedPayment(req);const pdf=await generateInvoice(payment);res.set('Content-Type','application/pdf');res.set('Content-Disposition',`attachment; filename="${payment.invoiceNumber}.pdf"`);res.set('Cache-Control','private, no-store');res.send(pdf);}
