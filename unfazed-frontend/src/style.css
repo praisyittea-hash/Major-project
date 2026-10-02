@@ -1,6 +1,11 @@
 @import 'tailwindcss';
+@theme {
+  --font-sans: 'Lato', sans-serif;
+  --font-serif: 'Lato', sans-serif;
+  --font-mono: 'Lato', sans-serif;
+}
 :root {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Lato', sans-serif;
   color: #183a36;
   background: #f6f8f5;
   font-synthesis: none;
@@ -30,7 +35,7 @@ p {
 .eyebrow {
   letter-spacing: 0.18em;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   color: #487a6c;
 }
 a {

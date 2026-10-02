@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './src/config/loadEnv.js';
 import { app } from './src/app.js';
 import { connectDB } from './src/config/db.js';
 import { validateEnv } from './src/config/env.js';
@@ -8,7 +8,7 @@ import { startReservationWorker } from './src/services/reservationService.js';
 validateEnv();
 await connectDB();
 await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
-const server = app.listen(process.env.PORT || 5000, () =>
+const server = app.listen(process.env.PORT || 5000, '0.0.0.0', () =>
   console.log('Unfazed API listening; MongoDB connected'),
 );
 const io = attachSchedulingSocket(server);

@@ -16,11 +16,14 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 import Therapist from './models/Therapist.js';
 import { profileHtml } from './services/profileHtmlService.js';
 import { fileURLToPath } from 'node:url';
+import { corsOrigin, proxyHops } from './config/http.js';
 export const app = express();
+app.set('trust proxy', proxyHops());
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
+        'upgrade-insecure-requests': process.env.NODE_ENV === 'production' ? [] : null,
         'script-src': ["'self'", 'https://checkout.razorpay.com'],
         'frame-src': ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
         'connect-src': ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
@@ -30,7 +33,7 @@ app.use(
     },
   }),
 );
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
+app.use(cors({ origin: corsOrigin }));
 app.post(
   '/api/payments/webhook',
   express.raw({ type: 'application/json', limit: '128kb' }),

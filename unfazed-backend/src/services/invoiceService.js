@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import { fileURLToPath } from 'node:url';
 import Client from '../models/Client.js';
 import Therapist from '../models/Therapist.js';
 import { paymentConfig } from '../config/payments.js';
@@ -42,15 +43,24 @@ export function generateInvoice(payment) {
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('error', reject);
     doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.registerFont(
+      'Lato',
+      fileURLToPath(new URL('../../../assets/fonts/lato/Lato-Regular.ttf', import.meta.url)),
+    );
+    doc.registerFont(
+      'Lato-Bold',
+      fileURLToPath(new URL('../../../assets/fonts/lato/Lato-Bold.ttf', import.meta.url)),
+    );
+    doc.font('Lato');
     doc.rect(0, 0, 595, 14).fill('#245e50');
     doc
       .fillColor('#183a36')
-      .font('Helvetica-Bold')
+      .font('Lato-Bold')
       .fontSize(26)
       .text(data.supplier, 48, 48, { width: 300 });
     doc.fontSize(12).text('PAYMENT INVOICE', 360, 54, { width: 187, align: 'right' });
     doc
-      .font('Helvetica')
+      .font('Lato')
       .fontSize(10)
       .fillColor('#536a61')
       .text(`Practice: ${data.therapist}`, 48, 92, { width: 300 });
@@ -58,18 +68,18 @@ export function generateInvoice(payment) {
     doc.text(data.gstin ? `GSTIN: ${data.gstin}` : 'GSTIN: not configured', 48, 174);
     doc
       .fillColor('#183a36')
-      .font('Helvetica-Bold')
+      .font('Lato-Bold')
       .fontSize(11)
       .text('Invoice number', 48, 210)
       .text('Issued on', 360, 210);
     doc
-      .font('Helvetica')
+      .font('Lato')
       .fontSize(10)
       .text(payment.invoiceNumber, 48, 229, { width: 290 })
       .text(new Date(data.issuedAt).toISOString().slice(0, 10), 360, 229);
-    doc.font('Helvetica-Bold').fontSize(11).text('Billed to', 48, 274);
+    doc.font('Lato-Bold').fontSize(11).text('Billed to', 48, 274);
     doc
-      .font('Helvetica')
+      .font('Lato')
       .fontSize(11)
       .text(data.client, 48, 294, { width: 450, height: 30 })
       .fontSize(10)
@@ -77,12 +87,12 @@ export function generateInvoice(payment) {
     doc.rect(48, 376, 499, 32).fill('#e7efe9');
     doc
       .fillColor('#183a36')
-      .font('Helvetica-Bold')
+      .font('Lato-Bold')
       .fontSize(10)
       .text('Description', 60, 388)
       .text('Amount', 425, 388, { width: 110, align: 'right' });
     doc
-      .font('Helvetica')
+      .font('Lato')
       .text(data.description, 60, 424, { width: 340, height: 60 })
       .text(inr(data.subtotal), 425, 424, { width: 110, align: 'right' });
     doc.moveTo(48, 492).lineTo(547, 492).strokeColor('#dce6df').stroke();
@@ -93,12 +103,12 @@ export function generateInvoice(payment) {
       .text('GST (inclusive)', 340, 535)
       .text(inr(data.tax), 425, 535, { width: 110, align: 'right' });
     doc
-      .font('Helvetica-Bold')
+      .font('Lato-Bold')
       .fontSize(13)
       .text('Total paid', 340, 571)
       .text(inr(data.amount), 420, 571, { width: 115, align: 'right' });
     doc
-      .font('Helvetica')
+      .font('Lato')
       .fontSize(9)
       .fillColor('#536a61')
       .text(`Gateway transaction: ${data.transaction}`, 48, 642, { width: 490 });

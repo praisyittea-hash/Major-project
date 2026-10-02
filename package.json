@@ -6,13 +6,18 @@
     "unfazed-frontend"
   ],
   "scripts": {
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test:tooling && npm run test --workspaces --if-present",
     "build": "npm run build -w unfazed-frontend",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "eslint scripts shared api && npm run lint --workspaces --if-present",
     "dev:api": "npm run dev -w unfazed-backend",
     "dev:web": "npm run dev -w unfazed-frontend",
-    "format:check": "prettier --check unfazed-backend unfazed-frontend eslint.config.js docs README.md package.json .prettierrc.json",
-    "format": "prettier --write unfazed-backend unfazed-frontend eslint.config.js docs README.md package.json .prettierrc.json"
+    "format:check": "prettier --check unfazed-backend unfazed-frontend eslint.config.js docs README.md package.json .prettierrc.json scripts shared api railway.json render.yaml vercel.json",
+    "format": "prettier --write unfazed-backend unfazed-frontend eslint.config.js docs README.md package.json .prettierrc.json scripts shared api railway.json render.yaml vercel.json",
+    "setup": "node scripts/setup.js",
+    "dev": "node scripts/dev.js",
+    "start": "node unfazed-backend/server.js",
+    "test:tooling": "node --test scripts/test/*.test.js",
+    "smoke:local": "node scripts/smoke-local.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

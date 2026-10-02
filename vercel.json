@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
+  "outputDirectory": "unfazed-frontend/dist",
+  "functions": {
+    "api/branded-profile.js": {
+      "includeFiles": "unfazed-frontend/dist/index.html",
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/:page(login|register|dashboard|profile|schedule|clients|billing|portal)",
+      "destination": "/index.html"
+    },
+    { "source": "/:slug", "destination": "/api/branded-profile?slug=:slug" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

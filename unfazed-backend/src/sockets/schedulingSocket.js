@@ -1,9 +1,10 @@
+import { corsOrigin } from '../config/http.js';
 import { Server } from 'socket.io';
 import Therapist from '../models/Therapist.js';
 let io;
 export function attachSchedulingSocket(server) {
   io = new Server(server, {
-    cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173' },
+    cors: { origin: corsOrigin },
   });
   io.on('connection', (socket) => {
     socket.on('watch-availability', async (slug, ack) => {
