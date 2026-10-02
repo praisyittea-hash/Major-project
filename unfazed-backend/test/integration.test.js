@@ -205,3 +205,13 @@ test('session payment amount is server-derived, consent-gated and reuses its ord
  const again=await request(app).post(`/api/payments/session/${paidSessionId}/orders`).set('Authorization',`Bearer ${paidBookingToken}`).expect(201);assert.equal(again.body.payment.gateway_order_id,order.body.payment.gateway_order_id);assert.equal(orderCalls,1);assert.equal((await Payment.findById(paymentId)).amount,150000);
  await request(app).get(`/api/payments/${paymentId}`).set('Authorization',`Bearer ${clientToken}`).expect(403);
 });
+import {createHmac} from 'node:crypto';
+test('callback signature and gateway details are verified but do not confirm the booking',async()=>{
+ const payment=await Payment.findById(paymentId);const gatewayId='pay_fixture_session';
+ gatewayPayments.set(gatewayId,{id:gatewayId,order_id:payment.gateway_order_id,amount:payment.amount,currency:'INR',status:'captured'});
+ const payload={razorpay_order_id:payment.gateway_order_id,razorpay_payment_id:gatewayId,razorpay_signature:createHmac('sha256','checkout-fixture-secret').update(`${payment.gateway_order_id}|${gatewayId}`).digest('hex')};
+ await request(app).post(`/api/payments/${paymentId}/verify`).set('Authorization',`Bearer ${paidBookingToken}`).send({...payload,razorpay_signature:'0'.repeat(64)}).expect(400);
+ const {body}=await request(app).post(`/api/payments/${paymentId}/verify`).set('Authorization',`Bearer ${paidBookingToken}`).send(payload).expect(200);
+ assert.equal(body.payment.status,'verified');assert.equal((await Session.findById(paidSessionId)).status,'pending_payment');assert.notEqual((await Session.findById(paidSessionId)).paymentStatus,'paid');
+ const dashboard=await request(app).get('/api/payments').set('Authorization',`Bearer ${token}`).expect(200);assert.equal(dashboard.body.payments[0].status,'verified');
+});
