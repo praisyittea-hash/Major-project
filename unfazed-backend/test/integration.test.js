@@ -44,3 +44,8 @@ test('branded slugs are unique and reserved paths cannot be claimed',async()=>{
  await request(app).patch('/api/therapists/me').set('Authorization',`Bearer ${token}`).send({slug:second.body.therapist.slug}).expect(409);
  await request(app).patch('/api/therapists/me').set('Authorization',`Bearer ${token}`).send({slug:'dashboard'}).expect(400);
 });
+test('public profile exposes only explicitly shared fields',async()=>{
+ const {body}=await request(app).get('/api/public/dr-meera-sharma').expect(200);
+ assert.equal(body.therapist.name,credentials.name);assert.equal(body.therapist.email,undefined);assert.equal(body.therapist.password_hash,undefined);assert.equal(body.therapist.subscriptionConfig,undefined);
+ await request(app).get('/api/public/unknown').expect(404);
+});

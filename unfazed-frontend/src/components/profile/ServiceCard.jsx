@@ -1,0 +1,1 @@
+export default function ServiceCard({service,slug}){return <article className="card"><h3>{service.name}</h3><p>{service.description}</p><p>{service.duration} minutes · {new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(service.rate/100)}</p><a className="button" href={`/${slug}/book?service=${service._id}`}>Choose a time</a></article>;}
