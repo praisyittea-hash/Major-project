@@ -10,7 +10,7 @@ export default function BookingPage(){
  const [profile,setProfile]=useState(null),[serviceId,setServiceId]=useState(search.get('service')||''),[slots,setSlots]=useState([]),[selected,setSelected]=useState(null),[date,setDate]=useState(new Date()),[from,setFrom]=useState(format(new Date(),'yyyy-MM-dd')),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const {register,handleSubmit,formState:{isSubmitting}}=useForm();
  const [confirmation,setConfirmation]=useState(null);
- async function book(values){setError('');try{const {data}=await api.post(`/public/${slug}/book`,{...values,serviceId,start:selected.start});setConfirmation(data);sessionStorage.setItem(`booking-${data.session._id}`,data.bookingToken);setSelected(null);setSlots(list=>list.filter(s=>s.start!==data.session.start));}catch(e){setError(messageOf(e));}}
+ async function book(values){setError('');try{const {data}=await api.post(`/public/${slug}/book`,{...values,serviceId,start:selected.start});setConfirmation(data);sessionStorage.setItem(`booking-${data.session._id}`,data.bookingToken);setSelected(null);const refreshed=await api.get(`/public/${slug}/slots`,{params:{from,to:format(addDays(new Date(`${from}T12:00:00`),14),'yyyy-MM-dd'),duration:service.duration}});setSlots(refreshed.data.slots);}catch(e){setError(messageOf(e));}}
  const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone;
  const service=profile?.services.find(s=>s._id===serviceId);
  useEffect(()=>{api.get(`/public/${slug}`).then(({data})=>{setProfile(data.therapist);setServiceId(id=>id||data.therapist.services[0]?._id||'');}).catch(e=>{setError(messageOf(e));setLoading(false);});},[slug]);

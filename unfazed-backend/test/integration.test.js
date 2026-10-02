@@ -90,3 +90,12 @@ test('booking persists session and instantly removes occupied times',async()=>{
  await request(app).get('/api/scheduling/sessions').expect(401);
  const list=await request(app).get('/api/scheduling/sessions').set('Authorization',`Bearer ${token}`).expect(200);assert.equal(list.body.sessions[0]._id,bookingId);
 });
+test('concurrent booking requests cannot double book or bypass buffers',async()=>{
+ const therapist=await Therapist.findOne({email:credentials.email});
+ const slots=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-21&to=2030-01-21&duration=60').expect(200);
+ const payload={serviceId:therapist.services[0].id,start:slots.body.slots[0].start,name:'Race Client',email:'race@example.test'};
+ const results=await Promise.all(Array.from({length:5},()=>request(app).post('/api/public/dr-meera-sharma/book').send(payload)));
+ assert.equal(results.filter(r=>r.status===201).length,1);assert.equal(results.filter(r=>r.status===409).length,4);
+ await request(app).post('/api/public/dr-meera-sharma/book').send({...payload,start:new Date(new Date(payload.start).getTime()+60*60000).toISOString()}).expect(409);
+ await request(app).post('/api/public/dr-meera-sharma/book').send({...payload,start:'2030-01-21T02:30:00Z'}).expect(409);
+});
