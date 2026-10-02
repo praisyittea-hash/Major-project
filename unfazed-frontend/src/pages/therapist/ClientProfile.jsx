@@ -1,0 +1,14 @@
+import {useEffect,useState} from 'react';
+import {useParams,Link} from 'react-router-dom';
+import {useForm} from 'react-hook-form';
+import api,{messageOf} from '../../api/axiosInstance.js';
+import ClientCard from '../../components/crm/ClientCard.jsx';
+export default function ClientProfile(){
+ const {id}=useParams();const [client,setClient]=useState(null),[error,setError]=useState(''),[saved,setSaved]=useState('');
+ const {register,handleSubmit,reset,formState:{isSubmitting}}=useForm();
+ useEffect(()=>{let active=true;api.get(`/clients/${id}`).then(({data})=>{if(active){setClient(data.client);reset({...data.client,tags:data.client.tags.map(t=>t.label).join(', ')});}}).catch(e=>{if(active)setError(messageOf(e));});return()=>{active=false;};},[id,reset]);
+ async function submit(values){setSaved('');setError('');try{const {data}=await api.patch(`/clients/${id}`,{...values,tags:values.tags.split(',').map(label=>({label:label.trim()})).filter(t=>t.label)});setClient(data.client);setSaved('Client updated.');}catch(e){setError(messageOf(e));}}
+ async function archive(){try{const {data}=await api.delete(`/clients/${id}`);setClient(data.client);reset({...data.client,tags:data.client.tags.map(t=>t.label).join(', ')});setSaved(data.message);}catch(e){setError(messageOf(e));}}
+ if(!client)return <main>{error?<p className="error" role="alert">{error}</p>:'Loading client…'}</main>;
+ return <main><Link to="/clients">← All clients</Link><h1>Client profile</h1><ClientCard client={client}/>{error&&<p className="error" role="alert">{error}</p>}{saved&&<p className="success" role="status">{saved}</p>}<form className="card" onSubmit={handleSubmit(submit)}><h2>Contact and status</h2><div className="grid"><label>Name<input {...register('name')} required minLength={2}/></label><label>Email<input type="email" {...register('email')} required/></label><label>Phone<input {...register('phone')}/></label><label>Status<select {...register('status')}>{['active','inactive','archived'].map(s=><option key={s}>{s}</option>)}</select></label><label>Tags<input {...register('tags')}/></label></div><div className="row"><button disabled={isSubmitting}>{isSubmitting?'Saving…':'Save client'}</button><button type="button" className="secondary" onClick={archive}>Archive client</button></div></form>{client.intake&&<section className="card"><h2>Intake</h2><p>Submitted {new Date(client.intake.submittedAt).toLocaleString()}</p><p style={{whiteSpace:'pre-wrap'}}>{client.intake.presentingConcern}</p><dl>{Object.entries(client.intake.demographics||{}).map(([k,v])=><div key={k}><dt><strong>{k}</strong></dt><dd>{v}</dd></div>)}{Object.entries(client.intake.history||{}).map(([k,v])=><div key={k}><dt><strong>{k}</strong></dt><dd style={{whiteSpace:'pre-wrap'}}>{v}</dd></div>)}</dl></section>}</main>;
+}
