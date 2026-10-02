@@ -149,11 +149,22 @@ test('CRM aggregates payment and notes history with an API-level private/shared 
 });
 import {issueToken} from '../src/services/tokenService.js';
 let clientToken;
-const intake={demographics:{age:29,pronouns:'she/her',location:'Bengaluru',occupation:'Designer'},presentingConcern:'Looking for support with work stress.',history:{priorTherapy:'None',medicalHistory:'None reported',medications:'None'}};
+const intake={consent:{accepted:true,version:'consent-v1'},demographics:{age:29,pronouns:'she/her',location:'Bengaluru',occupation:'Designer'},presentingConcern:'Looking for support with work stress.',history:{priorTherapy:'None',medicalHistory:'None reported',medications:'None'}};
 test('static intake persists in the database only through scoped portal authentication',async()=>{
  const client=await Client.findById(clientId);clientToken=issueToken(client.id,'client',{therapistId:String(client.therapist)});
  await request(app).post('/api/portal/intake').send(intake).expect(401);
  await request(app).post('/api/portal/intake').set('Authorization',`Bearer ${token}`).send(intake).expect(403);
  await request(app).post('/api/portal/intake').set('Authorization',`Bearer ${clientToken}`).send(intake).expect(200);
  const persisted=await Client.findById(clientId).select('+intake');assert.equal(persisted.intake.presentingConcern,intake.presentingConcern);assert.ok(persisted.intake.submittedAt);
+});
+import ConsentAudit from '../src/models/ConsentAudit.js';
+test('consent requires a literal checkbox, current version and immutable server audit timestamp',async()=>{
+ const auth={Authorization:`Bearer ${clientToken}`};
+ await request(app).post('/api/portal/intake').set(auth).send({...intake,consent:{accepted:false,version:'consent-v1'}}).expect(400);
+ await request(app).post('/api/portal/intake').set(auth).send({...intake,consent:{accepted:'true',version:'consent-v1'}}).expect(400);
+ await request(app).post('/api/portal/intake').set(auth).send({...intake,consent:{accepted:true,version:'old'}}).expect(400);
+ const audit=await ConsentAudit.findOne({client:clientId});assert.ok(audit.acceptedAt);assert.ok(audit.text);const original=audit.acceptedAt.toISOString();
+ await request(app).post('/api/portal/intake').set(auth).send({...intake,consentAt:'1990-01-01'}).expect(200);
+ assert.equal((await ConsentAudit.findOne({client:clientId})).acceptedAt.toISOString(),original);assert.equal(await ConsentAudit.countDocuments({client:clientId}),1);
+ const profile=await request(app).get(`/api/clients/${clientId}`).set('Authorization',`Bearer ${token}`).expect(200);assert.equal(profile.body.consentAudit.length,1);assert.equal(profile.body.client.consentAt,original);
 });

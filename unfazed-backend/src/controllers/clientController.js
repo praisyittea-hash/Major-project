@@ -1,4 +1,5 @@
 import {clientHistory} from '../services/clientHistoryService.js';
+import ConsentAudit from '../models/ConsentAudit.js';
 import Client from '../models/Client.js';
 import {HttpError} from '../middleware/errorHandler.js';
 import {entitlementsFor} from '../services/entitlementService.js';
@@ -19,7 +20,7 @@ export async function listClients(req,res){
  res.json({clients,total,page,limit});
 }
 export async function ownedClient(req){const client=await Client.findOne({_id:req.params.id,therapist:req.therapist.id}).select('+intake');if(!client)throw new HttpError(404,'Client not found');return client;}
-export async function getClient(req,res){res.json({client:await ownedClient(req)});}
+export async function getClient(req,res){const client=await ownedClient(req);res.json({client,consentAudit:await ConsentAudit.find({client:client.id,therapist:req.therapist.id}).sort({acceptedAt:1})});}
 export async function updateClient(req,res){const client=await ownedClient(req);Object.assign(client,pick(req.body));await client.save();res.json({client});}
 export async function archiveClient(req,res){const client=await ownedClient(req);client.status='archived';await client.save();res.json({client,message:'Client archived; history preserved'});}
 

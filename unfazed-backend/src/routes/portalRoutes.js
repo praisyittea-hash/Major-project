@@ -8,6 +8,7 @@ import {submitIntake} from '../controllers/intakeController.js';
 const router=Router();router.use(authenticate,clientOnly);
 router.get('/me',(req,res)=>res.json({client:req.client,template:intakeTemplate}));
 export const intakeRules=()=>[
+ body('consent.accepted').custom(v=>v===true),body('consent.version').equals(intakeTemplate.consentVersion),
  body('demographics').isObject(),body('demographics.age').isInt({min:0,max:120}),
  ...['pronouns','location','occupation'].map(key=>body(`demographics.${key}`).optional().isString().isLength({max:200})),
  body('presentingConcern').isString().trim().isLength({min:10,max:5000}),body('history').isObject(),
