@@ -1,4 +1,3 @@
-import {addDays,format} from 'date-fns';
 import {fromZonedTime} from 'date-fns-tz';
 import Availability from '../models/Availability.js';
 import Session from '../models/Session.js';
@@ -21,12 +20,13 @@ export async function availableSlots(therapist,startDate,endDate,duration,dbSess
  if(!availability||!availability.durations.includes(duration))return [];
  const booked=await Session.find({therapist,status:{$in:['confirmed','pending_payment','completed']},$or:[{holdExpiresAt:{$exists:false}},{holdExpiresAt:{$gt:new Date()}},{status:{$ne:'pending_payment'}}],start:{$lte:new Date(end.getTime()+2*86400000)},end:{$gte:new Date(start.getTime()-2*86400000)}}).session(dbSession);
  const slots=[];
- for(let day=start;day<=end;day=addDays(day,1)){
-  const date=format(day,'yyyy-MM-dd');const windows=availability.weekly.find(w=>w.day===day.getUTCDay())?.windows||[];
+ for(let day=start;day<=end;day=new Date(day.getTime()+86400000)){
+  const date=day.toISOString().slice(0,10);const override=availability.overrides.find(o=>o.date===date);
+  const windows=override?(override.blocked?[]:override.windows):(availability.weekly.find(w=>w.day===day.getUTCDay())?.windows||[]);
   for(const window of windows){const begin=fromZonedTime(`${date}T${window.start}:00`,availability.timezone),finish=fromZonedTime(`${date}T${window.end}:00`,availability.timezone);
    for(let time=begin.getTime();time+(duration+availability.bufferMinutes)*60000<=finish.getTime();time+=15*60000){
     const slot={start:new Date(time),end:new Date(time+duration*60000),duration,bufferMinutes:availability.bufferMinutes};
-    if(slot.start<=new Date()||booked.some(existing=>conflict(slot,existing)))continue;
+    if(slot.start<=new Date()||booked.some(existing=>conflict(slot,existing))||availability.blocked.some(block=>conflict(slot,block)))continue;
     slots.push({start:slot.start.toISOString(),end:slot.end.toISOString(),duration});
    }
   }

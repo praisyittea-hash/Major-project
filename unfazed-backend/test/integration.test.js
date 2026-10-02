@@ -63,3 +63,9 @@ test('recurring weekly availability converts India times to UTC',async()=>{
  await request(app).put('/api/scheduling/availability/weekly').set('Authorization',`Bearer ${token}`).send({weekly:[{day:1,windows:[{start:'17:00',end:'09:00'}]}]}).expect(400);
  await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-01&to=2031-01-01&duration=60').expect(400);
 });
+test('one-time overrides replace recurring hours and blocked intervals disappear',async()=>{
+ await request(app).put('/api/scheduling/availability/exceptions').set('Authorization',`Bearer ${token}`).send({overrides:[{date:'2030-01-08',blocked:false,windows:[{start:'10:00',end:'12:00'}]},{date:'2030-01-14',blocked:true,windows:[]}],blocked:[{start:'2030-01-07T03:30:00Z',end:'2030-01-07T04:30:00Z'}]}).expect(200);
+ const override=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-08&to=2030-01-08&duration=60').expect(200);assert.equal(override.body.slots[0].start,'2030-01-08T04:30:00.000Z');
+ const blocked=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-14&to=2030-01-14&duration=60').expect(200);assert.equal(blocked.body.slots.length,0);
+ const partial=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);assert.ok(partial.body.slots.every(s=>s.start>='2030-01-07T04:30:00.000Z'));
+});
