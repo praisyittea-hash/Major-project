@@ -99,3 +99,14 @@ test('concurrent booking requests cannot double book or bypass buffers',async()=
  await request(app).post('/api/public/dr-meera-sharma/book').send({...payload,start:new Date(new Date(payload.start).getTime()+60*60000).toISOString()}).expect(409);
  await request(app).post('/api/public/dr-meera-sharma/book').send({...payload,start:'2030-01-21T02:30:00Z'}).expect(409);
 });
+import NotificationJob from '../src/models/NotificationJob.js';
+test('booking capability is scoped; cancellation persists waitlist notification stub',async()=>{
+ await request(app).get(`/api/bookings/${bookingId}`).expect(401);
+ await request(app).get(`/api/bookings/${bookingId}`).set('Authorization',`Bearer ${bookingToken}`).expect(200);
+ await request(app).post('/api/public/dr-meera-sharma/waitlist').send({date:'2030-01-07',duration:60,name:'Waiting Client',email:'waiting@example.test'}).expect(201);
+ await request(app).post(`/api/scheduling/sessions/${bookingId}/cancel`).set('Authorization',`Bearer ${token}`).expect(200);
+ await request(app).post(`/api/scheduling/sessions/${bookingId}/cancel`).set('Authorization',`Bearer ${token}`).expect(200);
+ assert.equal(await NotificationJob.countDocuments({kind:'slot_available'}),1);
+ const jobs=await NotificationJob.find();assert.equal(jobs[0].status,'stubbed');
+ const slots=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);assert.ok(slots.body.slots.some(s=>s.start===bookedStart));
+});
