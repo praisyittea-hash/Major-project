@@ -215,3 +215,15 @@ test('callback signature and gateway details are verified but do not confirm the
  assert.equal(body.payment.status,'verified');assert.equal((await Session.findById(paidSessionId)).status,'pending_payment');assert.notEqual((await Session.findById(paidSessionId)).paymentStatus,'paid');
  const dashboard=await request(app).get('/api/payments').set('Authorization',`Bearer ${token}`).expect(200);assert.equal(dashboard.body.payments[0].status,'verified');
 });
+import Package from '../src/models/Package.js';
+const packagePayments=[];
+test('3, 6 and 12 session packages persist and purchase prices cannot be client-tampered',async()=>{
+ const therapist=await Therapist.findOne({email:credentials.email});
+ for(const sessionCount of [3,6,12]){
+  const created=await request(app).post('/api/packages').set('Authorization',`Bearer ${token}`).send({name:`${sessionCount} sessions`,serviceId:therapist.services[0].id,sessionCount,amount:sessionCount*140000,expiryDays:90}).expect(201);
+  const purchased=await request(app).post(`/api/packages/${created.body.package._id}/orders`).set('Authorization',`Bearer ${clientToken}`).send({idempotencyKey:crypto.randomUUID(),amount:1}).expect(201);
+  assert.equal(purchased.body.payment.amount,sessionCount*140000);assert.equal(purchased.body.payment.packageSnapshot.sessionCount,sessionCount);packagePayments.push(purchased.body.payment._id);
+ }
+ assert.equal(await Package.countDocuments(),3);
+ await request(app).post('/api/packages').set('Authorization',`Bearer ${token}`).send({name:'Invalid package',serviceId:therapist.services[0].id,sessionCount:5,amount:1}).expect(400);
+});

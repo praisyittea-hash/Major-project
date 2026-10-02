@@ -7,6 +7,7 @@ import schedulingRoutes,{publicScheduling,bookingRoutes} from './routes/scheduli
 import clientRoutes from './routes/clientRoutes.js';
 import portalRoutes from './routes/portalRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import packageRoutes from './routes/packageRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import {errorHandler,notFound} from './middleware/errorHandler.js';
 import Therapist from './models/Therapist.js';
@@ -29,5 +30,6 @@ app.get(/^\/(?!api(?:\/|$)).*/,(_req,res)=>res.sendFile(fileURLToPath(new URL('.
 app.use('/api/clients',clientRoutes);
 app.use('/api/portal',portalRoutes);
 app.use('/api/payments',paymentRoutes);
+app.use('/api/packages',packageRoutes);
 app.use(notFound);
 app.use(errorHandler);
