@@ -1,27 +1,287 @@
 import CheckoutForm from '../../components/payments/CheckoutForm.jsx';
 import IntakeForm from '../../components/crm/IntakeForm.jsx';
-import {io} from 'socket.io-client';
-import {useEffect,useState} from 'react';
-import {useParams,useSearchParams} from 'react-router-dom';
-import {useForm} from 'react-hook-form';
-import {addDays,format} from 'date-fns';
-import api,{messageOf} from '../../api/axiosInstance.js';
+import { io } from 'socket.io-client';
+import { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { addDays, format } from 'date-fns';
+import api, { messageOf } from '../../api/axiosInstance.js';
 import Calendar from '../../components/scheduling/Calendar.jsx';
 import SlotPicker from '../../components/scheduling/SlotPicker.jsx';
-export default function BookingPage(){
- const {slug}=useParams(),[search]=useSearchParams();
- const [profile,setProfile]=useState(null),[serviceId,setServiceId]=useState(search.get('service')||''),[slots,setSlots]=useState([]),[selected,setSelected]=useState(null),[date,setDate]=useState(new Date()),[from,setFrom]=useState(format(new Date(),'yyyy-MM-dd')),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const {register,handleSubmit,formState:{isSubmitting}}=useForm();
- const [confirmation,setConfirmation]=useState(null);
- async function book(values){setError('');try{const {data}=await api.post(`/public/${slug}/book`,{...values,serviceId,start:selected.start});setConfirmation(data);sessionStorage.setItem(`booking-${data.session._id}`,data.bookingToken);setSelected(null);const refreshed=await api.get(`/public/${slug}/slots`,{params:{from,to:format(addDays(new Date(`${from}T12:00:00`),14),'yyyy-MM-dd'),duration:service.duration}});setSlots(refreshed.data.slots);}catch(e){setError(messageOf(e));}}
- const [intakeTemplate,setIntakeTemplate]=useState(null),[intakeDone,setIntakeDone]=useState(false);
- async function submitIntake(values){setError('');try{const {data}=await api.post(`/bookings/${confirmation.session._id}/intake`,values,{headers:{Authorization:`Bearer ${confirmation.bookingToken}`}});sessionStorage.setItem('unfazed-client-token',data.token);setIntakeDone(true);}catch(e){setError(messageOf(e));}}
- const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone;
- const service=profile?.services.find(s=>s._id===serviceId);
- useEffect(()=>{api.get(`/public/${slug}`).then(({data})=>{setProfile(data.therapist);setIntakeTemplate(data.intakeTemplate);setServiceId(id=>id||data.therapist.services[0]?._id||'');}).catch(e=>{setError(messageOf(e));setLoading(false);});},[slug]);
- useEffect(()=>{if(!service)return;let active=true;setLoading(true);setSelected(null);api.get(`/public/${slug}/slots`,{params:{from,to:format(addDays(new Date(`${from}T12:00:00`),14),'yyyy-MM-dd'),duration:service.duration}}).then(({data})=>{if(active){setSlots(data.slots);setError('');}}).catch(e=>{if(active)setError(messageOf(e));}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[slug,from,service]);
- useEffect(()=>{if(!service)return;const base=api.defaults.baseURL.replace(/\/api\/?$/,'');const socket=io(base);socket.emit('watch-availability',slug);socket.on('availability-changed',()=>api.get(`/public/${slug}/slots`,{params:{from,to:format(addDays(new Date(`${from}T12:00:00`),14),'yyyy-MM-dd'),duration:service.duration}}).then(({data})=>{setSlots(data.slots);setSelected(s=>s&&data.slots.some(v=>v.start===s.start)?s:null);}).catch(e=>setError(messageOf(e))));return()=>socket.disconnect();},[slug,from,service]);
- async function waitlist(values){setError('');try{const {data}=await api.post(`/public/${slug}/waitlist`,{...values,date:from,duration:service.duration});setError(data.message);}catch(e){setError(messageOf(e));}}
- function navigate(value){setDate(value);setFrom(format(value,'yyyy-MM-dd'));}
- return <main><p className="eyebrow">YOUR NEXT STEP</p><h1>Book a session{profile?` with ${profile.name}`:''}</h1>{error&&<p className="error" role="alert">{error}</p>}<div className="grid"><label>Service<select value={serviceId} onChange={e=>setServiceId(e.target.value)}>{profile?.services.map(s=><option value={s._id} key={s._id}>{s.name} · {s.duration} minutes</option>)}</select></label><label>Starting date<input type="date" value={from} onChange={e=>{setFrom(e.target.value);setDate(new Date(`${e.target.value}T12:00:00`));}}/></label></div><p className="muted">Your local timezone: {timezone}. Showing 14 days from the selected date.</p>{loading?<p aria-busy="true">Finding available times…</p>:<><Calendar events={slots.map(slot=>({...slot,start:new Date(slot.start),end:new Date(slot.end),title:'Available'}))} onSelect={event=>setSelected({start:event.start.toISOString(),end:event.end.toISOString(),duration:service.duration})} date={date} onNavigate={navigate}/><SlotPicker slots={slots} selected={selected} onSelect={setSelected} timezone={timezone}/></>}{!loading&&service&&!slots.length&&<form className="card" onSubmit={handleSubmit(waitlist)}><h2>Join the waitlist</h2><p>For {from}. Notifications are a development stub.</p><label>Your name<input {...register('name')} required minLength={2}/></label><label>Email<input type="email" {...register('email')} required/></label><button disabled={isSubmitting}>Join waitlist</button></form>}{selected&&<div className="card"><h2>Your selected time</h2><p>{new Date(selected.start).toLocaleString()} · {service?.duration} minutes</p><form onSubmit={handleSubmit(book)}><label>Your name<input {...register('name')} required minLength={2}/></label><label>Email<input type="email" {...register('email')} required/></label><button disabled={isSubmitting}>{isSubmitting?'Booking…':'Reserve time'}</button></form></div>}{confirmation&&<div className="success" role="status"><h2>Time reserved</h2><p>{new Date(confirmation.session.start).toLocaleString()}. Complete intake, consent and payment to confirm. Your reservation expires at {confirmation.session.holdExpiresAt?new Date(confirmation.session.holdExpiresAt).toLocaleTimeString():'the scheduled start'}.</p></div>}{confirmation&&!intakeDone&&<IntakeForm template={intakeTemplate} onSubmit={submitIntake}/>}{intakeDone&&confirmation.session.rate>0&&<CheckoutForm sessionId={confirmation.session._id} token={confirmation.bookingToken} onPaid={()=>setConfirmation(c=>({...c,session:{...c.session,status:'confirmed',paymentStatus:'paid'}}))}/>} {intakeDone&&<div className="success"><p>Intake and consent saved.</p><a className="button" href="/portal">Open your client portal</a></div>}</main>;
+export default function BookingPage() {
+  const { slug } = useParams(),
+    [search] = useSearchParams();
+  const [profile, setProfile] = useState(null),
+    [serviceId, setServiceId] = useState(search.get('service') || ''),
+    [slots, setSlots] = useState([]),
+    [selected, setSelected] = useState(null),
+    [date, setDate] = useState(new Date()),
+    [from, setFrom] = useState(format(new Date(), 'yyyy-MM-dd')),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState('');
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm();
+  const [confirmation, setConfirmation] = useState(null);
+  async function book(values) {
+    setError('');
+    try {
+      const { data } = await api.post(`/public/${slug}/book`, {
+        ...values,
+        serviceId,
+        start: selected.start,
+      });
+      setConfirmation(data);
+      sessionStorage.setItem(`booking-${data.session._id}`, data.bookingToken);
+      setSelected(null);
+      const refreshed = await api.get(`/public/${slug}/slots`, {
+        params: {
+          from,
+          to: format(addDays(new Date(`${from}T12:00:00`), 14), 'yyyy-MM-dd'),
+          duration: service.duration,
+        },
+      });
+      setSlots(refreshed.data.slots);
+    } catch (e) {
+      setError(messageOf(e));
+    }
+  }
+  const [intakeTemplate, setIntakeTemplate] = useState(null),
+    [intakeDone, setIntakeDone] = useState(false);
+  async function submitIntake(values) {
+    setError('');
+    try {
+      const { data } = await api.post(`/bookings/${confirmation.session._id}/intake`, values, {
+        headers: { Authorization: `Bearer ${confirmation.bookingToken}` },
+      });
+      sessionStorage.setItem('unfazed-client-token', data.token);
+      setIntakeDone(true);
+    } catch (e) {
+      setError(messageOf(e));
+    }
+  }
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const service = profile?.services.find((s) => s._id === serviceId);
+  useEffect(() => {
+    api
+      .get(`/public/${slug}`)
+      .then(({ data }) => {
+        setProfile(data.therapist);
+        setIntakeTemplate(data.intakeTemplate);
+        setServiceId((id) => id || data.therapist.services[0]?._id || '');
+      })
+      .catch((e) => {
+        setError(messageOf(e));
+        setLoading(false);
+      });
+  }, [slug]);
+  useEffect(() => {
+    if (!service || !from) return;
+    let active = true;
+    setLoading(true);
+    setSelected(null);
+    api
+      .get(`/public/${slug}/slots`, {
+        params: {
+          from,
+          to: format(addDays(new Date(`${from}T12:00:00`), 14), 'yyyy-MM-dd'),
+          duration: service.duration,
+        },
+      })
+      .then(({ data }) => {
+        if (active) {
+          setSlots(data.slots);
+          setError('');
+        }
+      })
+      .catch((e) => {
+        if (active) setError(messageOf(e));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [slug, from, service]);
+  useEffect(() => {
+    if (!service || !from) return;
+    const base = api.defaults.baseURL.replace(/\/api\/?$/, '');
+    const socket = io(base);
+    socket.emit('watch-availability', slug);
+    socket.on('availability-changed', () =>
+      api
+        .get(`/public/${slug}/slots`, {
+          params: {
+            from,
+            to: format(addDays(new Date(`${from}T12:00:00`), 14), 'yyyy-MM-dd'),
+            duration: service.duration,
+          },
+        })
+        .then(({ data }) => {
+          setSlots(data.slots);
+          setSelected((s) => (s && data.slots.some((v) => v.start === s.start) ? s : null));
+        })
+        .catch((e) => setError(messageOf(e))),
+    );
+    return () => socket.disconnect();
+  }, [slug, from, service]);
+  async function waitlist(values) {
+    setError('');
+    try {
+      const { data } = await api.post(`/public/${slug}/waitlist`, {
+        ...values,
+        date: from,
+        duration: service.duration,
+      });
+      setError(data.message);
+    } catch (e) {
+      setError(messageOf(e));
+    }
+  }
+  function navigate(value) {
+    setDate(value);
+    setFrom(format(value, 'yyyy-MM-dd'));
+  }
+  return (
+    <main>
+      <p className="eyebrow">YOUR NEXT STEP</p>
+      <h1>Book a session{profile ? ` with ${profile.name}` : ''}</h1>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="grid">
+        <label>
+          Service
+          <select value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+            {profile?.services.map((s) => (
+              <option value={s._id} key={s._id}>
+                {s.name} · {s.duration} minutes
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Starting date
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => {
+              if (!e.target.value) return;
+              setFrom(e.target.value);
+              setDate(new Date(`${e.target.value}T12:00:00`));
+            }}
+          />
+        </label>
+      </div>
+      <p className="muted">
+        Your local timezone: {timezone}. Showing 14 days from the selected date.
+      </p>
+      {loading ? (
+        <p aria-busy="true">Finding available times…</p>
+      ) : (
+        <>
+          <Calendar
+            events={slots.map((slot) => ({
+              ...slot,
+              start: new Date(slot.start),
+              end: new Date(slot.end),
+              title: 'Available',
+            }))}
+            onSelect={(event) =>
+              setSelected({
+                start: event.start.toISOString(),
+                end: event.end.toISOString(),
+                duration: service.duration,
+              })
+            }
+            date={date}
+            onNavigate={navigate}
+          />
+          <SlotPicker
+            slots={slots}
+            selected={selected}
+            onSelect={setSelected}
+            timezone={timezone}
+          />
+        </>
+      )}
+      {!loading && service && !slots.length && (
+        <form className="card" onSubmit={handleSubmit(waitlist)}>
+          <h2>Join the waitlist</h2>
+          <p>For {from}. Notifications are a development stub.</p>
+          <label>
+            Your name
+            <input {...register('name')} required minLength={2} />
+          </label>
+          <label>
+            Email
+            <input type="email" {...register('email')} required />
+          </label>
+          <button disabled={isSubmitting}>Join waitlist</button>
+        </form>
+      )}
+      {selected && (
+        <div className="card">
+          <h2>Your selected time</h2>
+          <p>
+            {new Date(selected.start).toLocaleString()} · {service?.duration} minutes
+          </p>
+          <form onSubmit={handleSubmit(book)}>
+            <label>
+              Your name
+              <input {...register('name')} required minLength={2} />
+            </label>
+            <label>
+              Email
+              <input type="email" {...register('email')} required />
+            </label>
+            <button disabled={isSubmitting}>{isSubmitting ? 'Booking…' : 'Reserve time'}</button>
+          </form>
+        </div>
+      )}
+      {confirmation && (
+        <div className="success" role="status">
+          <h2>
+            {confirmation.session.status === 'confirmed' ? 'Session confirmed' : 'Time reserved'}
+          </h2>
+          <p>
+            {new Date(confirmation.session.start).toLocaleString()}. Complete intake, consent and
+            payment to confirm. Your reservation expires at{' '}
+            {confirmation.session.holdExpiresAt
+              ? new Date(confirmation.session.holdExpiresAt).toLocaleTimeString()
+              : 'the scheduled start'}
+            .
+          </p>
+        </div>
+      )}
+      {confirmation && !intakeDone && (
+        <IntakeForm template={intakeTemplate} onSubmit={submitIntake} />
+      )}
+      {intakeDone && confirmation.session.rate > 0 && (
+        <CheckoutForm
+          sessionId={confirmation.session._id}
+          token={confirmation.bookingToken}
+          onPaid={() =>
+            setConfirmation((c) => ({
+              ...c,
+              session: { ...c.session, status: 'confirmed', paymentStatus: 'paid' },
+            }))
+          }
+        />
+      )}{' '}
+      {intakeDone && (
+        <div className="success">
+          <p>Intake and consent saved.</p>
+          <a className="button" href="/portal">
+            Open your client portal
+          </a>
+        </div>
+      )}
+    </main>
+  );
 }

@@ -3,6 +3,7 @@ set -euo pipefail
 npm test
 npm run lint
 npm run build
+npm run format:check
 git diff --check
 git status --short
 if git ls-files --cached | rg "(^|/)\.env$|(^|/)\.env\.(local|production|development)$"; then echo "Secret environment file is tracked"; exit 1; fi

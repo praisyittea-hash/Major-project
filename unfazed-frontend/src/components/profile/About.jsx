@@ -1,1 +1,20 @@
-export default function About({therapist}){return <section className="card"><h2>Meet {therapist.name}</h2><p style={{whiteSpace:'pre-wrap'}}>{therapist.bio||'Welcome to my practice. Get in touch to learn how we can work together.'}</p><h3>Areas of focus</h3>{therapist.specializations.length?therapist.specializations.map(s=><span className="tag" key={s}>{s}</span>):<p className="muted">Specializations will be added soon.</p>}</section>;}
+export default function About({ therapist }) {
+  return (
+    <section className="card">
+      <h2>Meet {therapist.name}</h2>
+      <p style={{ whiteSpace: 'pre-wrap' }}>
+        {therapist.bio || 'Welcome to my practice. Get in touch to learn how we can work together.'}
+      </p>
+      <h3>Areas of focus</h3>
+      {therapist.specializations.length ? (
+        therapist.specializations.map((s) => (
+          <span className="tag" key={s}>
+            {s}
+          </span>
+        ))
+      ) : (
+        <p className="muted">Specializations will be added soon.</p>
+      )}
+    </section>
+  );
+}

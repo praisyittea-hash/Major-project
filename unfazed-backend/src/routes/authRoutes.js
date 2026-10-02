@@ -1,13 +1,34 @@
-import {Router} from 'express';
-import {body} from 'express-validator';
-import {rateLimit} from 'express-rate-limit';
-import {register,login} from '../controllers/authController.js';
-import {validate} from '../middleware/validate.js';
-import {authenticate,therapistOnly} from '../middleware/authMiddleware.js';
-const router=Router();
-router.use(rateLimit({windowMs:15*60*1000,limit:50,skip:()=>process.env.NODE_ENV==='test'}));
-export const emailRule=()=>body('email').isEmail().withMessage('Valid email required').trim().toLowerCase();
-router.post('/register',emailRule(),body('name').isString().trim().isLength({min:2,max:100}),body('password').isString().isLength({min:10,max:72}),validate,register);
-router.post('/login',emailRule(),body('password').isString().isLength({min:1,max:72}),validate,login);
-router.get('/me',authenticate,therapistOnly,(req,res)=>res.json({therapist:req.therapist}));
+import { Router } from 'express';
+import { body } from 'express-validator';
+import { rateLimit } from 'express-rate-limit';
+import { register, login } from '../controllers/authController.js';
+import { validate } from '../middleware/validate.js';
+import { authenticate, therapistOnly } from '../middleware/authMiddleware.js';
+const router = Router();
+router.use(
+  rateLimit({ windowMs: 15 * 60 * 1000, limit: 50, skip: () => process.env.NODE_ENV === 'test' }),
+);
+export const emailRule = () =>
+  body('email').isEmail().withMessage('Valid email required').trim().toLowerCase();
+router.post(
+  '/register',
+  emailRule(),
+  body('name').isString().trim().isLength({ min: 2, max: 100 }),
+  body('password')
+    .isString()
+    .isLength({ min: 10, max: 72 })
+    .custom((v) => Buffer.byteLength(v, 'utf8') <= 72),
+  validate,
+  register,
+);
+router.post(
+  '/login',
+  emailRule(),
+  body('password').isString().isLength({ min: 1, max: 72 }),
+  validate,
+  login,
+);
+router.get('/me', authenticate, therapistOnly, (req, res) =>
+  res.json({ therapist: req.therapist }),
+);
 export default router;

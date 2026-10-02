@@ -1,1 +1,24 @@
-export default function ClientCard({client}){return <div className="card"><div className="row"><h2>{client.name}</h2><span className="tag">{client.status}</span></div><p>{client.email}{client.phone?` · ${client.phone}`:''}</p>{client.tags.map(t=><span key={t.label} className="tag">{t.label}</span>)}<p className="muted">{client.consentAt?`Consent recorded ${new Date(client.consentAt).toLocaleString()}`:'Intake and consent pending'}</p></div>;}
+export default function ClientCard({ client }) {
+  return (
+    <div className="card">
+      <div className="row">
+        <h2>{client.name}</h2>
+        <span className="tag">{client.status}</span>
+      </div>
+      <p>
+        {client.email}
+        {client.phone ? ` · ${client.phone}` : ''}
+      </p>
+      {client.tags.map((t) => (
+        <span key={t.label} className="tag">
+          {t.label}
+        </span>
+      ))}
+      <p className="muted">
+        {client.consentAt
+          ? `Consent recorded ${new Date(client.consentAt).toLocaleString()}`
+          : 'Intake and consent pending'}
+      </p>
+    </div>
+  );
+}

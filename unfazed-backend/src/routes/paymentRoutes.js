@@ -1,14 +1,29 @@
-import {Router} from 'express';
-import {param,body} from 'express-validator';
-import {authenticate} from '../middleware/authMiddleware.js';
-import {validate} from '../middleware/validate.js';
-import {createSessionOrder,getPayment,verifyPayment,listPayments,downloadInvoice} from '../controllers/paymentController.js';
-import {therapistOnly} from '../middleware/authMiddleware.js';
-import {requireFeature} from '../middleware/entitlementMiddleware.js';
-const router=Router();router.use(authenticate);
-router.post('/session/:id/orders',param('id').isMongoId(),validate,createSessionOrder);
-router.get('/',therapistOnly,requireFeature('payments'),listPayments);
-router.post('/:id/verify',param('id').isMongoId(),body('razorpay_order_id').isString().isLength({min:5,max:100}),body('razorpay_payment_id').isString().isLength({min:5,max:100}),body('razorpay_signature').isHexadecimal().isLength({min:64,max:64}),validate,verifyPayment);
-router.get('/:id/invoice',param('id').isMongoId(),validate,downloadInvoice);
-router.get('/:id',param('id').isMongoId(),validate,getPayment);
+import { Router } from 'express';
+import { param, body } from 'express-validator';
+import { authenticate } from '../middleware/authMiddleware.js';
+import { validate } from '../middleware/validate.js';
+import {
+  createSessionOrder,
+  getPayment,
+  verifyPayment,
+  listPayments,
+  downloadInvoice,
+} from '../controllers/paymentController.js';
+import { therapistOnly } from '../middleware/authMiddleware.js';
+import { requireFeature } from '../middleware/entitlementMiddleware.js';
+const router = Router();
+router.use(authenticate);
+router.post('/session/:id/orders', param('id').isMongoId(), validate, createSessionOrder);
+router.get('/', therapistOnly, requireFeature('payments'), listPayments);
+router.post(
+  '/:id/verify',
+  param('id').isMongoId(),
+  body('razorpay_order_id').isString().isLength({ min: 5, max: 100 }),
+  body('razorpay_payment_id').isString().isLength({ min: 5, max: 100 }),
+  body('razorpay_signature').isHexadecimal().isLength({ min: 64, max: 64 }),
+  validate,
+  verifyPayment,
+);
+router.get('/:id/invoice', param('id').isMongoId(), validate, downloadInvoice);
+router.get('/:id', param('id').isMongoId(), validate, getPayment);
 export default router;

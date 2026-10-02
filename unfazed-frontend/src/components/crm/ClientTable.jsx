@@ -1,2 +1,51 @@
-import {Link} from 'react-router-dom';
-export default function ClientTable({clients,sort,direction,onSort}){return <div className="table-wrap"><table><thead><tr>{[['name','Name'],['lastSession','Last session'],['status','Status']].map(([key,label])=><th key={key}><button className="secondary" onClick={()=>onSort(key)}>{label} {sort===key?(direction==='asc'?'↑':'↓'):''}</button></th>)}<th>Tags</th></tr></thead><tbody>{clients.map(client=><tr key={client._id}><td><Link to={`/clients/${client._id}`}>{client.name}</Link><div className="muted">{client.email}</div></td><td>{client.lastSession?new Date(client.lastSession).toLocaleDateString():'No sessions yet'}</td><td><span className="tag">{client.status}</span></td><td>{client.tags.map(tag=><span key={tag.label} className="tag">{tag.label}</span>)}</td></tr>)}</tbody></table>{!clients.length&&<p>No clients match these filters.</p>}</div>;}
+import { Link } from 'react-router-dom';
+export default function ClientTable({ clients, sort, direction, onSort }) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            {[
+              ['name', 'Name'],
+              ['lastSession', 'Last session'],
+              ['status', 'Status'],
+            ].map(([key, label]) => (
+              <th key={key}>
+                <button className="secondary" onClick={() => onSort(key)}>
+                  {label} {sort === key ? (direction === 'asc' ? '↑' : '↓') : ''}
+                </button>
+              </th>
+            ))}
+            <th>Tags</th>
+          </tr>
+        </thead>
+        <tbody>
+          {clients.map((client) => (
+            <tr key={client._id}>
+              <td>
+                <Link to={`/clients/${client._id}`}>{client.name}</Link>
+                <div className="muted">{client.email}</div>
+              </td>
+              <td>
+                {client.lastSession
+                  ? new Date(client.lastSession).toLocaleDateString()
+                  : 'No sessions yet'}
+              </td>
+              <td>
+                <span className="tag">{client.status}</span>
+              </td>
+              <td>
+                {client.tags.map((tag) => (
+                  <span key={tag.label} className="tag">
+                    {tag.label}
+                  </span>
+                ))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {!clients.length && <p>No clients match these filters.</p>}
+    </div>
+  );
+}
