@@ -227,3 +227,18 @@ test('3, 6 and 12 session packages persist and purchase prices cannot be client-
  assert.equal(await Package.countDocuments(),3);
  await request(app).post('/api/packages').set('Authorization',`Bearer ${token}`).send({name:'Invalid package',serviceId:therapist.services[0].id,sessionCount:5,amount:1}).expect(400);
 });
+import ClientPackage from '../src/models/ClientPackage.js';
+import {activatePackage} from '../src/services/packageService.js';
+test('package rate, expiry and credits are immutable snapshots; redemption is atomic',async()=>{
+ // Explicit captured database fixture to exercise credits before webhook integration.
+ const snapshot=await Payment.findById(packagePayments[0]);
+ const fixture=await Payment.create({therapist:snapshot.therapist,client:snapshot.client,package:snapshot.package,purchaseKey:'captured-package-fixture',amount:420001,platform_fee:0,net_amount:420001,subtotal:420001,packageSnapshot:{...snapshot.packageSnapshot,amount:420001},status:'captured',capturedAt:new Date('2030-01-01T00:00:00Z')});
+ const pkg=await activatePackage(fixture);assert.equal(pkg.baseRate,140000);assert.equal(pkg.rateRemainder,1);assert.equal(pkg.expiresAt.toISOString(),'2030-04-01T00:00:00.000Z');
+ const repeated=await activatePackage(fixture);assert.equal(repeated.id,pkg.id);
+ const payload={serviceId:String(pkg.serviceId),clientPackage:pkg.id,start:'2030-02-18T03:30:00Z'};
+ const results=await Promise.all([request(app).post('/api/portal/book').set('Authorization',`Bearer ${clientToken}`).send(payload),request(app).post('/api/portal/book').set('Authorization',`Bearer ${clientToken}`).send(payload)]);
+ assert.equal(results.filter(r=>r.status===201).length,1);const booked=results.find(r=>r.status===201).body.session;assert.equal(booked.paymentStatus,'package');assert.equal(booked.rate,140001);assert.equal((await ClientPackage.findById(pkg.id)).usedSessions.length,1);
+ await request(app).post('/api/portal/book').set('Authorization',`Bearer ${clientToken}`).send({...payload,start:'2030-04-08T03:30:00Z'}).expect(409);
+ await request(app).post(`/api/scheduling/sessions/${booked._id}/cancel`).set('Authorization',`Bearer ${token}`).expect(200);
+ assert.equal((await ClientPackage.findById(pkg.id)).usedSessions.length,0);
+});

@@ -1,4 +1,5 @@
 import {clientHistory} from '../services/clientHistoryService.js';
+import {portalBook} from '../controllers/schedulingController.js';
 import {Router} from 'express';
 import {body} from 'express-validator';
 import {authenticate} from '../middleware/authMiddleware.js';
@@ -16,5 +17,6 @@ export const intakeRules=()=>[
  body('presentingConcern').isString().trim().isLength({min:10,max:5000}),body('history').isObject(),
  ...['priorTherapy','medicalHistory','medications'].map(key=>body(`history.${key}`).optional().isString().isLength({max:3000})),
 ];
+router.post('/book',body('serviceId').isMongoId(),body('start').isISO8601({strict:true}),body('clientPackage').optional().isMongoId(),validate,portalBook);
 router.post('/intake',...intakeRules(),validate,submitIntake);
 export default router;
