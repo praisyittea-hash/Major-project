@@ -9,26 +9,26 @@
     "lint": "eslint src server.js test scripts --no-error-on-unmatched-pattern"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "mongoose": "^8.19.0",
-    "dotenv": "^17.2.3",
-    "cors": "^2.8.5",
     "bcryptjs": "^3.0.2",
-    "jsonwebtoken": "^9.0.2",
-    "express-validator": "^7.2.1",
-    "razorpay": "^2.9.6",
-    "socket.io": "^4.8.1",
-    "multer": "^2.0.2",
-    "pdfkit": "^0.17.2",
-    "nodemailer": "^7.0.6",
+    "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "express-validator": "^7.2.1",
     "helmet": "^8.1.0",
-    "express-rate-limit": "^8.1.0"
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.0",
+    "multer": "^2.0.2",
+    "nodemailer": "^10.0.13",
+    "pdfkit": "^0.17.2",
+    "razorpay": "^2.9.6",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^10.2.3",
     "nodemon": "^3.1.10",
-    "supertest": "^7.1.4",
-    "mongodb-memory-server": "^10.2.3"
+    "supertest": "^7.1.4"
   }
 }
