@@ -30,3 +30,10 @@ test('JWT login and protected account access',async()=>{
  const me=await request(app).get('/api/auth/me').set('Authorization',`Bearer ${token}`).expect(200);
  assert.equal(me.body.therapist.email,credentials.email);
 });
+test('profile updates are validated and protected; privileged fields ignored',async()=>{
+ await request(app).patch('/api/therapists/me').send({bio:'x'}).expect(401);
+ const result=await request(app).patch('/api/therapists/me').set('Authorization',`Bearer ${token}`).send({bio:'Compassionate, evidence-informed care.',specializations:['Anxiety'],languages:['English','Hindi'],services:[{name:'Individual therapy',duration:60,rate:150000}],email:'intruder@example.test'}).expect(200);
+ assert.equal(result.body.therapist.email,credentials.email);
+ assert.equal(result.body.therapist.bio,'Compassionate, evidence-informed care.');
+ await request(app).patch('/api/therapists/me').set('Authorization',`Bearer ${token}`).send({timezone:'not/a-zone'}).expect(400);
+});

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import therapistRoutes from './routes/therapistRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import {errorHandler,notFound} from './middleware/errorHandler.js';
 export const app = express();
@@ -9,5 +10,6 @@ app.use(cors({origin: process.env.FRONTEND_URL || 'http://localhost:5173'}));
 app.use(express.json({limit:'64kb'}));
 app.get('/api/health', (_req,res)=>res.json({status:'ok'}));
 app.use('/api/auth',authRoutes);
+app.use('/api/therapists',therapistRoutes);
 app.use(notFound);
 app.use(errorHandler);
