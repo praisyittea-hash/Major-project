@@ -85,7 +85,7 @@ test('booking persists session and instantly removes occupied times',async()=>{
  const before=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);
  bookedStart=before.body.slots[0].start;
  const {body}=await request(app).post('/api/public/dr-meera-sharma/book').send({serviceId:therapist.services[0].id,start:bookedStart,name:'Ananya Rao',email:'ananya@example.test'}).expect(201);
- bookingId=body.session._id;bookingToken=body.bookingToken;assert.equal(body.session.status,'confirmed');assert.ok(bookingToken);
+ bookingId=body.session._id;bookingToken=body.bookingToken;assert.equal(body.session.status,'pending_payment');assert.ok(bookingToken);
  const after=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);assert.ok(!after.body.slots.some(s=>s.start===bookedStart));
  await request(app).get('/api/scheduling/sessions').expect(401);
  const list=await request(app).get('/api/scheduling/sessions').set('Authorization',`Bearer ${token}`).expect(200);assert.equal(list.body.sessions[0]._id,bookingId);
@@ -180,4 +180,28 @@ test('new booking completes intake/consent; email alone never grants existing cl
  assert.ok(body.token);assert.equal((await Session.findById(booked.body.session._id)).client.toString(),body.client._id);
  const existing=await request(app).post('/api/public/dr-meera-sharma/book').send({serviceId:therapist.services[0].id,start:'2030-02-04T03:30:00Z',name:'Impersonator',email:'ananya@example.test'}).expect(201);
  await request(app).post(`/api/bookings/${existing.body.session._id}/intake`).set('Authorization',`Bearer ${existing.body.bookingToken}`).send(intake).expect(409);
+});
+import Payment from '../src/models/Payment.js';
+import {matchesSignature} from '../src/services/paymentGateway.js';
+let paymentId,paidSessionId,paidBookingToken;
+const gatewayPayments=new Map();let orderCalls=0;
+const fixtureGateway={
+ publicKey:()=> 'rzp_test_fixture',
+ createOrder:async data=>{orderCalls++;return {id:`order_fixture_${orderCalls}`,amount:data.amount,currency:data.currency};},
+ fetchPayment:async id=>gatewayPayments.get(id),
+ verifyCheckout:(order,payment,signature)=>matchesSignature(`${order}|${payment}`,signature,'checkout-fixture-secret'),
+ verifyWebhook:(raw,signature)=>matchesSignature(raw,signature,'webhook-fixture-secret'),
+};
+test('session payment amount is server-derived, consent-gated and reuses its order',async()=>{
+ // This is an explicitly injected integration-test gateway, never a live success.
+ app.locals.paymentGateway=fixtureGateway;
+ const therapist=await Therapist.findOne({email:credentials.email});
+ const booked=await request(app).post('/api/public/dr-meera-sharma/book').send({serviceId:therapist.services[0].id,start:'2030-02-11T03:30:00Z',name:'Paying Client',email:'paying@example.test'}).expect(201);
+ paidSessionId=booked.body.session._id;paidBookingToken=booked.body.bookingToken;
+ await request(app).post(`/api/payments/session/${paidSessionId}/orders`).set('Authorization',`Bearer ${paidBookingToken}`).expect(409);
+ await request(app).post(`/api/bookings/${paidSessionId}/intake`).set('Authorization',`Bearer ${paidBookingToken}`).send(intake).expect(200);
+ const order=await request(app).post(`/api/payments/session/${paidSessionId}/orders`).set('Authorization',`Bearer ${paidBookingToken}`).send({amount:1}).expect(201);paymentId=order.body.payment._id;
+ assert.equal(order.body.payment.amount,150000);assert.ok(order.body.payment.gateway_order_id);assert.equal(order.body.key,'rzp_test_fixture');
+ const again=await request(app).post(`/api/payments/session/${paidSessionId}/orders`).set('Authorization',`Bearer ${paidBookingToken}`).expect(201);assert.equal(again.body.payment.gateway_order_id,order.body.payment.gateway_order_id);assert.equal(orderCalls,1);assert.equal((await Payment.findById(paymentId)).amount,150000);
+ await request(app).get(`/api/payments/${paymentId}`).set('Authorization',`Bearer ${clientToken}`).expect(403);
 });

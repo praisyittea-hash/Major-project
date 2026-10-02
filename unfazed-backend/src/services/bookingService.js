@@ -1,3 +1,4 @@
+import {paymentConfig} from '../config/payments.js';
 import mongoose from 'mongoose';
 import {formatInTimeZone} from 'date-fns-tz';
 import Availability from '../models/Availability.js';
@@ -13,7 +14,7 @@ export async function createBooking(therapist,service,contact,start){
   const date=formatInTimeZone(start,availability.timezone,'yyyy-MM-dd');
   const offered=await availableSlots(therapist.id,date,date,service.duration,transaction);
   if(!offered.some(s=>s.start===start.toISOString()))throw new HttpError(409,'This time is no longer available');
-  const [session]=await Session.create([{therapist:therapist.id,contact,serviceId:service.id,start,end:new Date(start.getTime()+service.duration*60000),duration:service.duration,bufferMinutes:availability.bufferMinutes,rate:service.rate}],{session:transaction});
+  const [session]=await Session.create([{therapist:therapist.id,contact,serviceId:service.id,start,end:new Date(start.getTime()+service.duration*60000),duration:service.duration,bufferMinutes:availability.bufferMinutes,rate:service.rate,status:service.rate>0?'pending_payment':'confirmed',paymentStatus:service.rate>0?'pending':'unpaid',...(service.rate>0?{holdExpiresAt:new Date(Date.now()+paymentConfig().holdMinutes*60000)}:{})}],{session:transaction});
   return session;
  });
 }
