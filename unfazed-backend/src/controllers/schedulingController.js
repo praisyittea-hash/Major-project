@@ -37,6 +37,6 @@ export async function cancelSession(req,res){
 }
 export async function getBooking(req,res){
  const session=await Session.findById(req.params.id);if(!session)throw new HttpError(404,'Booking not found');
- if(!(req.auth.role==='booking'&&req.auth.sub===session.id)&&!(req.auth.role==='therapist'&&req.auth.sub===String(session.therapist)))throw new HttpError(403,'Booking access denied');
+ if(!(req.auth.role==='client'&&req.auth.sub===String(session.client)&&req.auth.therapistId===String(session.therapist))&&!(req.auth.role==='booking'&&req.auth.sub===session.id)&&!(req.auth.role==='therapist'&&req.auth.sub===String(session.therapist)))throw new HttpError(403,'Booking access denied');
  res.json({session});
 }

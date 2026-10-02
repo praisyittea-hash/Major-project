@@ -15,7 +15,8 @@ const schema = new mongoose.Schema({
   languages: [{type:String,maxLength:50}],
   services: [serviceSchema],
   timezone: {type:String,default:'Asia/Kolkata'},
+  crmRevision:{type:Number,default:0,select:false},
   subscriptionConfig: {type:String,default:'default',select:false},
 }, {timestamps:true});
-schema.set('toJSON',{transform:(_doc,value)=>{delete value.password_hash;delete value.subscriptionConfig;return value;}});
+schema.set('toJSON',{transform:(_doc,value)=>{delete value.password_hash;delete value.subscriptionConfig;delete value.crmRevision;return value;}});
 export default mongoose.model('Therapist',schema);

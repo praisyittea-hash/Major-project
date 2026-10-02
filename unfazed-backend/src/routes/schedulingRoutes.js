@@ -1,3 +1,5 @@
+import {bookingIntake} from '../controllers/intakeController.js';
+import {intakeRules} from './portalRoutes.js';
 import {Router} from 'express';
 import {body,query,param} from 'express-validator';
 import {authenticate,therapistOnly} from '../middleware/authMiddleware.js';
@@ -11,6 +13,7 @@ publicScheduling.post('/:slug/book',body('serviceId').isMongoId(),body('start').
 publicScheduling.post('/:slug/waitlist',body('date').isDate({format:'YYYY-MM-DD'}),body('duration').isInt().isIn([30,45,60,90]),body('name').isString().trim().isLength({min:2,max:100}),body('email').isEmail().trim().toLowerCase(),validate,waitlist);
 export const bookingRoutes=Router();
 bookingRoutes.get('/:id',authenticate,param('id').isMongoId(),validate,getBooking);
+bookingRoutes.post('/:id/intake',authenticate,param('id').isMongoId(),...intakeRules(),validate,bookingIntake);
 const router=Router();router.use(authenticate,therapistOnly,requireFeature('scheduling'));
 router.get('/sessions',sessions);
 router.post('/sessions/:id/cancel',param('id').isMongoId(),validate,cancelSession);

@@ -168,3 +168,16 @@ test('consent requires a literal checkbox, current version and immutable server 
  assert.equal((await ConsentAudit.findOne({client:clientId})).acceptedAt.toISOString(),original);assert.equal(await ConsentAudit.countDocuments({client:clientId}),1);
  const profile=await request(app).get(`/api/clients/${clientId}`).set('Authorization',`Bearer ${token}`).expect(200);assert.equal(profile.body.consentAudit.length,1);assert.equal(profile.body.client.consentAt,original);
 });
+test('client portal exposes shared notes only and therapist issues scoped links',async()=>{
+ const {body}=await request(app).post(`/api/clients/${clientId}/portal-link`).set('Authorization',`Bearer ${token}`).expect(200);assert.match(body.url,/\/portal#access=/);
+ const history=await request(app).get('/api/portal/history').set('Authorization',`Bearer ${clientToken}`).expect(200);assert.equal(history.body.notes.length,1);assert.equal(history.body.notes[0].privateContent,undefined);
+ await request(app).get('/api/clients').set('Authorization',`Bearer ${clientToken}`).expect(403);
+});
+test('new booking completes intake/consent; email alone never grants existing client history',async()=>{
+ const therapist=await Therapist.findOne({email:credentials.email});
+ const booked=await request(app).post('/api/public/dr-meera-sharma/book').send({serviceId:therapist.services[0].id,start:'2030-01-28T03:30:00Z',name:'New Client',email:'newclient@example.test'}).expect(201);
+ const {body}=await request(app).post(`/api/bookings/${booked.body.session._id}/intake`).set('Authorization',`Bearer ${booked.body.bookingToken}`).send(intake).expect(200);
+ assert.ok(body.token);assert.equal((await Session.findById(booked.body.session._id)).client.toString(),body.client._id);
+ const existing=await request(app).post('/api/public/dr-meera-sharma/book').send({serviceId:therapist.services[0].id,start:'2030-02-04T03:30:00Z',name:'Impersonator',email:'ananya@example.test'}).expect(201);
+ await request(app).post(`/api/bookings/${existing.body.session._id}/intake`).set('Authorization',`Bearer ${existing.body.bookingToken}`).send(intake).expect(409);
+});

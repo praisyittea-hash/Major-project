@@ -10,7 +10,7 @@ const schema=new mongoose.Schema({
  name:{type:String,required:true,trim:true,maxLength:100},email:{type:String,required:true,trim:true,lowercase:true},
  phone:{type:String,maxLength:30},status:{type:String,enum:['active','inactive','archived'],default:'active'},
  tags:[{label:{type:String,required:true,maxLength:50},_id:false}],
- lastSession:Date,
+ lastSession:Date,originBooking:{type:mongoose.Schema.Types.ObjectId,ref:'Session',select:false},
  intake:{type:intakeSchema,select:false},
  consentAt:Date,consentVersion:String,
 },{timestamps:true});

@@ -2,6 +2,7 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import {connectDB} from '../src/config/db.js';
+import Client from '../src/models/Client.js';
 import Session from '../src/models/Session.js';
 import Availability from '../src/models/Availability.js';
 import Therapist from '../src/models/Therapist.js';
@@ -16,6 +17,7 @@ export async function seed(){
  const therapist=await Therapist.findOne({email:therapists[0].email});
  await Availability.updateOne({therapist:therapist.id},{$setOnInsert:{timezone:'Asia/Kolkata',weekly:[1,2,3,4,5].map(day=>({day,windows:[{start:'09:00',end:'17:00'}]}))}},{upsert:true});
  for(const [i,name] of ['Ananya Rao','Rohan Patel','Priya Menon'].entries()){const start=new Date();start.setUTCDate(start.getUTCDate()+i+1);start.setUTCHours(5,0,0,0);await Session.updateOne({therapist:therapist.id,'contact.email':`client${i+1}@unfazed.example`},{$setOnInsert:{contact:{name,email:`client${i+1}@unfazed.example`},start,end:new Date(start.getTime()+3600000),duration:60,serviceId:therapist.services[0].id,rate:therapist.services[0].rate,bufferMinutes:10}},{upsert:true});}
+ for(const session of await Session.find({therapist:therapist.id,'contact.email':{$in:['client1@unfazed.example','client2@unfazed.example','client3@unfazed.example']}})){const client=await Client.findOneAndUpdate({therapist:therapist.id,email:session.contact.email},{$setOnInsert:{name:session.contact.name,tags:[{label:'Online'}]}},{upsert:true,new:true});await Session.updateOne({_id:session.id,client:{$exists:false}},{$set:{client:client.id}});}
  console.log('Development therapists ready. Existing records preserved.');
 }
 if(process.argv[1]===new URL(import.meta.url).pathname){try{await connectDB();await seed();}finally{await mongoose.disconnect();}}
