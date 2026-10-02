@@ -37,3 +37,10 @@ test('profile updates are validated and protected; privileged fields ignored',as
  assert.equal(result.body.therapist.bio,'Compassionate, evidence-informed care.');
  await request(app).patch('/api/therapists/me').set('Authorization',`Bearer ${token}`).send({timezone:'not/a-zone'}).expect(400);
 });
+test('branded slugs are unique and reserved paths cannot be claimed',async()=>{
+ const first=await Therapist.findOne({email:credentials.email});assert.equal(first.slug,'dr-meera-sharma');
+ const second=await request(app).post('/api/auth/register').send({...credentials,email:'second@example.test'}).expect(201);
+ assert.notEqual(second.body.therapist.slug,first.slug);
+ await request(app).patch('/api/therapists/me').set('Authorization',`Bearer ${token}`).send({slug:second.body.therapist.slug}).expect(409);
+ await request(app).patch('/api/therapists/me').set('Authorization',`Bearer ${token}`).send({slug:'dashboard'}).expect(400);
+});

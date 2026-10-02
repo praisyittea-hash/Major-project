@@ -3,10 +3,12 @@ import {body} from 'express-validator';
 import {authenticate,therapistOnly} from '../middleware/authMiddleware.js';
 import {validate} from '../middleware/validate.js';
 import {updateProfile} from '../controllers/therapistController.js';
+import {validateSlug} from '../utils/generateSlug.js';
 const router=Router();
 router.use(authenticate,therapistOnly);
 router.get('/me',(req,res)=>res.json({therapist:req.therapist}));
 router.patch('/me',
+ body('slug').optional().isString().custom(validateSlug),
  body('name').optional().isString().trim().isLength({min:2,max:100}),
  body('bio').optional().isString().isLength({max:3000}),
  ...['specializations','languages'].flatMap(key=>[body(key).optional().isArray({max:20}),body(`${key}.*`).isString().trim().isLength({min:1,max:50})]),
