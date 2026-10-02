@@ -1,0 +1,9 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createHmac} from 'node:crypto';
+import {razorpayConfig} from '../src/config/razorpay.js';
+import {matchesSignature} from '../src/services/paymentGateway.js';
+import {moneyBreakdown} from '../src/config/payments.js';
+test('Razorpay configuration rejects live or missing credentials',()=>{assert.throws(()=>razorpayConfig({}));assert.throws(()=>razorpayConfig({RAZORPAY_KEY_ID:'rzp_live_not_allowed',RAZORPAY_KEY_SECRET:'fixture'}));assert.equal(razorpayConfig({RAZORPAY_KEY_ID:'rzp_test_fixture',RAZORPAY_KEY_SECRET:'fixture'}).key_id,'rzp_test_fixture');});
+test('HMAC verification uses exact raw bytes and constant-time comparison',()=>{const body=Buffer.from('{"event":"test"}'),secret='fixture-secret',signature=createHmac('sha256',secret).update(body).digest('hex');assert.ok(matchesSignature(body,signature,secret));assert.ok(!matchesSignature(Buffer.from('{ "event":"test"}'),signature,secret));assert.ok(!matchesSignature(body,'invalid',secret));});
+test('money values are paise; fees and tax are configuration driven',()=>{process.env.PLATFORM_FEE_BPS='250';process.env.GST_BPS='1800';const result=moneyBreakdown(118000);assert.equal(result.platform_fee,2950);assert.equal(result.tax,18000);assert.equal(result.net_amount,115050);delete process.env.PLATFORM_FEE_BPS;delete process.env.GST_BPS;});
