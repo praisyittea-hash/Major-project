@@ -69,3 +69,13 @@ test('one-time overrides replace recurring hours and blocked intervals disappear
  const blocked=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-14&to=2030-01-14&duration=60').expect(200);assert.equal(blocked.body.slots.length,0);
  const partial=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);assert.ok(partial.body.slots.every(s=>s.start>='2030-01-07T04:30:00.000Z'));
 });
+test('all session durations and configured buffer fit inside availability windows',async()=>{
+ for(const duration of [30,45,60,90]){
+  const {body}=await request(app).get(`/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=${duration}`).expect(200);
+  assert.ok(body.slots.length);assert.equal((new Date(body.slots[0].end)-new Date(body.slots[0].start))/60000,duration);
+ }
+ await request(app).put('/api/scheduling/availability/settings').set('Authorization',`Bearer ${token}`).send({durations:[30,60],bufferMinutes:30}).expect(200);
+ const disabled=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=45').expect(200);assert.equal(disabled.body.slots.length,0);
+ const enabled=await request(app).get('/api/public/dr-meera-sharma/slots?from=2030-01-07&to=2030-01-07&duration=60').expect(200);assert.ok(enabled.body.slots.every(s=>new Date(s.end).getTime()+30*60000<=new Date('2030-01-07T11:30:00Z').getTime()));
+ await request(app).put('/api/scheduling/availability/settings').set('Authorization',`Bearer ${token}`).send({durations:[30,45,60,90],bufferMinutes:10}).expect(200);
+});

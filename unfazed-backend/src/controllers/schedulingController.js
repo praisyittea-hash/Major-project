@@ -11,3 +11,7 @@ export async function slots(req,res){const therapist=await practice(req);res.jso
 export async function saveExceptions(req,res){
  const availability=await Availability.findOneAndUpdate({therapist:req.therapist.id},{$set:{overrides:req.body.overrides,blocked:req.body.blocked},$inc:{revision:1}},{upsert:true,new:true,runValidators:true});res.json({availability});
 }
+
+export async function saveSettings(req,res){
+ const availability=await Availability.findOneAndUpdate({therapist:req.therapist.id},{$set:{durations:req.body.durations,bufferMinutes:req.body.bufferMinutes},$inc:{revision:1}},{upsert:true,new:true,runValidators:true});res.json({availability});
+}

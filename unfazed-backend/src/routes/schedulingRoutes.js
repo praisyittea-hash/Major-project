@@ -4,7 +4,7 @@ import {authenticate,therapistOnly} from '../middleware/authMiddleware.js';
 import {requireFeature} from '../middleware/entitlementMiddleware.js';
 import {validate} from '../middleware/validate.js';
 import {assertWeekly,assertWindows} from '../services/schedulingService.js';
-import {getAvailability,saveWeekly,slots,saveExceptions} from '../controllers/schedulingController.js';
+import {getAvailability,saveWeekly,slots,saveExceptions,saveSettings} from '../controllers/schedulingController.js';
 export const publicScheduling=Router();
 publicScheduling.get('/:slug/slots',query('from').isDate({format:'YYYY-MM-DD'}),query('to').isDate({format:'YYYY-MM-DD'}),query('duration').isInt().isIn([30,45,60,90]),validate,slots);
 const router=Router();router.use(authenticate,therapistOnly,requireFeature('scheduling'));
@@ -18,4 +18,5 @@ router.put('/availability/exceptions',
  body('blocked').isArray({max:200}),
  body('blocked.*.start').isISO8601({strict:true}),body('blocked.*.end').isISO8601({strict:true}),
  body('blocked').custom(list=>list.every(b=>new Date(b.end)>new Date(b.start))),validate,saveExceptions);
+router.put('/availability/settings',body('durations').isArray({min:1,max:4}).custom(v=>new Set(v).size===v.length&&v.every(d=>[30,45,60,90].includes(d))),body('bufferMinutes').isInt({min:0,max:120}),validate,saveSettings);
 export default router;
