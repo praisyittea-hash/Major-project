@@ -137,3 +137,13 @@ test('client history and last-session sorting use the owned client reference',as
  const history=await request(app).get(`/api/clients/${clientId}/history`).set('Authorization',`Bearer ${token}`).expect(200);assert.equal(history.body.sessions.length,1);
  const list=await request(app).get('/api/clients?sort=lastSession&direction=desc').set('Authorization',`Bearer ${token}`).expect(200);assert.equal(list.body.clients[0]._id,clientId);assert.ok(list.body.clients[0].lastSession);assert.equal(list.body.clients[0].intake,undefined);
 });
+import SessionNote from '../src/models/SessionNote.js';
+import {clientHistory} from '../src/services/clientHistoryService.js';
+test('CRM aggregates payment and notes history with an API-level private/shared boundary',async()=>{
+ const client=await Client.findById(clientId);
+ await SessionNote.create({therapist:client.therapist,client:client.id,privateContent:'Private clinical test fixture',sharedContent:'Shared reflection fixture'});
+ await SessionNote.create({therapist:client.therapist,client:client.id,privateContent:'Private-only fixture'});
+ const {body}=await request(app).get(`/api/clients/${clientId}/history`).set('Authorization',`Bearer ${token}`).expect(200);
+ assert.equal(body.notes.length,2);assert.ok(body.notes.some(n=>n.privateContent));assert.deepEqual(body.payments,[]);
+ const shared=await clientHistory(client,{sharedOnly:true});assert.equal(shared.notes.length,1);assert.equal(shared.notes[0].privateContent,undefined);
+});
