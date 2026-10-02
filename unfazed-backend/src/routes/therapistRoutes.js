@@ -4,8 +4,10 @@ import {authenticate,therapistOnly} from '../middleware/authMiddleware.js';
 import {validate} from '../middleware/validate.js';
 import {updateProfile} from '../controllers/therapistController.js';
 import {validateSlug} from '../utils/generateSlug.js';
+import {entitlementsFor} from '../services/entitlementService.js';
 const router=Router();
 router.use(authenticate,therapistOnly);
+router.get('/entitlements',async(req,res)=>res.json(await entitlementsFor(req.therapist)));
 router.get('/me',(req,res)=>res.json({therapist:req.therapist}));
 router.patch('/me',
  body('slug').optional().isString().custom(validateSlug),

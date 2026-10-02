@@ -49,3 +49,10 @@ test('public profile exposes only explicitly shared fields',async()=>{
  assert.equal(body.therapist.name,credentials.name);assert.equal(body.therapist.email,undefined);assert.equal(body.therapist.password_hash,undefined);assert.equal(body.therapist.subscriptionConfig,undefined);
  await request(app).get('/api/public/unknown').expect(404);
 });
+test('branded HTML includes escaped Open Graph metadata before JavaScript executes',async()=>{
+ const result=await request(app).get('/dr-meera-sharma').expect(200);
+ assert.match(result.text,/<meta property="og:title" content="Dr Meera Sharma \| Unfazed"/);
+ assert.match(result.text,/og:url/);
+ const access=await request(app).get('/api/therapists/entitlements').set('Authorization',`Bearer ${token}`).expect(200);
+ assert.equal(access.body.features.scheduling,true);
+});
