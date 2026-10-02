@@ -147,3 +147,13 @@ test('CRM aggregates payment and notes history with an API-level private/shared 
  assert.equal(body.notes.length,2);assert.ok(body.notes.some(n=>n.privateContent));assert.deepEqual(body.payments,[]);
  const shared=await clientHistory(client,{sharedOnly:true});assert.equal(shared.notes.length,1);assert.equal(shared.notes[0].privateContent,undefined);
 });
+import {issueToken} from '../src/services/tokenService.js';
+let clientToken;
+const intake={demographics:{age:29,pronouns:'she/her',location:'Bengaluru',occupation:'Designer'},presentingConcern:'Looking for support with work stress.',history:{priorTherapy:'None',medicalHistory:'None reported',medications:'None'}};
+test('static intake persists in the database only through scoped portal authentication',async()=>{
+ const client=await Client.findById(clientId);clientToken=issueToken(client.id,'client',{therapistId:String(client.therapist)});
+ await request(app).post('/api/portal/intake').send(intake).expect(401);
+ await request(app).post('/api/portal/intake').set('Authorization',`Bearer ${token}`).send(intake).expect(403);
+ await request(app).post('/api/portal/intake').set('Authorization',`Bearer ${clientToken}`).send(intake).expect(200);
+ const persisted=await Client.findById(clientId).select('+intake');assert.equal(persisted.intake.presentingConcern,intake.presentingConcern);assert.ok(persisted.intake.submittedAt);
+});

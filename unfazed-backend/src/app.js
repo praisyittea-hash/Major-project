@@ -5,6 +5,7 @@ import therapistRoutes from './routes/therapistRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import schedulingRoutes,{publicScheduling,bookingRoutes} from './routes/schedulingRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
+import portalRoutes from './routes/portalRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import {errorHandler,notFound} from './middleware/errorHandler.js';
 import Therapist from './models/Therapist.js';
@@ -25,5 +26,6 @@ app.use(express.static(fileURLToPath(new URL('../../unfazed-frontend/dist',impor
 app.get('/:slug',async(req,res,next)=>{const therapist=await Therapist.findOne({slug:req.params.slug});if(!therapist)return next();res.type('html').send(await profileHtml(therapist));});
 app.get(/^\/(?!api(?:\/|$)).*/,(_req,res)=>res.sendFile(fileURLToPath(new URL('../../unfazed-frontend/dist/index.html',import.meta.url))));
 app.use('/api/clients',clientRoutes);
+app.use('/api/portal',portalRoutes);
 app.use(notFound);
 app.use(errorHandler);
