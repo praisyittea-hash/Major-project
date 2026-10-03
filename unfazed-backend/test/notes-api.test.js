@@ -49,3 +49,57 @@ test('therapist can create, retrieve, edit and delete persisted session notes', 
   await request(app).delete(`/api/notes/${id}`).set(auth).expect(204);
   await request(app).get(`/api/notes/${id}`).set(auth).expect(404);
 });
+test('note ownership is enforced for every operation and foreign references cannot be attached', async () => {
+  const other = await Therapist.create({
+    name: 'Other Therapist',
+    email: 'other@example.test',
+    password_hash: 'fixture',
+  });
+  const stranger = { Authorization: `Bearer ${issueToken(other.id)}` };
+  const clientAuth = {
+    Authorization: `Bearer ${issueToken(client.id, 'client', { therapistId: therapist.id })}`,
+  };
+  const created = await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(auth)
+    .send({ content: richText('Owned note') })
+    .expect(201);
+  const path = `/api/notes/${created.body.note._id}`;
+  await request(app).get(path).expect(401);
+  await request(app).get(path).set({ Authorization: 'Bearer invalid' }).expect(401);
+  await request(app).get(path).set(clientAuth).expect(403);
+  await request(app).get(path).set(stranger).expect(404);
+  await request(app).patch(path).set(stranger).send({ title: 'Intrusion' }).expect(404);
+  await request(app).delete(path).set(stranger).expect(404);
+  await request(app).get(`/api/notes/client/${client.id}`).set(stranger).expect(404);
+  await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(stranger)
+    .send({ content: richText('Intrusion') })
+    .expect(404);
+  await request(app).patch(path).set(auth).send({ client: other.id }).expect(400);
+  await request(app).patch(path).set(auth).send({ session: other.id }).expect(404);
+  for (const content of [
+    { type: 'script' },
+    {
+      type: 'doc',
+      content: [
+        {
+          type: 'text',
+          text: 'X',
+          marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }],
+        },
+      ],
+    },
+    'html',
+    null,
+  ]) {
+    await request(app)
+      .post(`/api/notes/client/${client.id}`)
+      .set(auth)
+      .send({ content })
+      .expect(400);
+  }
+  await request(app).patch(path).set(auth).send({}).expect(400);
+  await request(app).patch(path).set(clientAuth).send({ title: 'Client edit' }).expect(403);
+});

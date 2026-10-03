@@ -4,15 +4,28 @@ import { authenticate, therapistOnly } from '../middleware/authMiddleware.js';
 import { requireFeature } from '../middleware/entitlementMiddleware.js';
 import { validate } from '../middleware/validate.js';
 import SessionNote from '../models/SessionNote.js';
-import { noteClient, ownedNote, noteInput } from '../services/noteService.js';
+import {
+  noteClient,
+  ownedNote,
+  noteInput,
+  validateNoteReferences,
+  validateRichText,
+} from '../services/noteService.js';
 const router = Router();
 router.use(authenticate, therapistOnly, requireFeature('crm'));
 const input = [
   body('type').optional().isIn(['private', 'shared']),
   body('title').optional().isString().trim().isLength({ max: 200 }),
   body('format').optional().isIn(['freeform']),
-  body('content').optional().isObject(),
+  body('content').optional().custom(validateRichText),
   body('session').optional().isMongoId(),
+  body().custom(
+    (value) =>
+      Object.keys(value).length > 0 &&
+      Object.keys(value).every((key) =>
+        ['type', 'title', 'format', 'content', 'session'].includes(key),
+      ),
+  ),
 ];
 router.get('/client/:clientId', param('clientId').isMongoId(), validate, async (req, res) => {
   await noteClient(req.therapist.id, req.params.clientId);
@@ -30,7 +43,7 @@ router.post(
   body('content').exists(),
   validate,
   async (req, res) => {
-    await noteClient(req.therapist.id, req.params.clientId);
+    await validateNoteReferences(req.therapist.id, req.params.clientId, req.body.session);
     const note = await SessionNote.create({
       ...noteInput(req.body),
       therapist: req.therapist.id,
@@ -44,6 +57,7 @@ router.get('/:id', param('id').isMongoId(), validate, async (req, res) =>
 );
 router.patch('/:id', param('id').isMongoId(), ...input, validate, async (req, res) => {
   const note = await ownedNote(req.therapist.id, req.params.id);
+  await validateNoteReferences(req.therapist.id, note.client, req.body.session || note.session);
   Object.assign(note, noteInput(req.body));
   await note.save();
   res.json({ note });
