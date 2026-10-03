@@ -1,8 +1,10 @@
+import UpgradePrompt, { entitlementFailure } from '../subscription/UpgradePrompt.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import api, { messageOf } from '../../api/axiosInstance.js';
 import NoteEditor, { blankNote } from './NoteEditor.jsx';
 import NoteContent from './NoteContent.jsx';
 export default function NotesPanel({ clientId }) {
+  const [upgrade, setUpgrade] = useState(null);
   const [notes, setNotes] = useState([]),
     [draft, setDraft] = useState(blankNote),
     [selected, setSelected] = useState(null),
@@ -17,6 +19,7 @@ export default function NotesPanel({ clientId }) {
       setLoaded(true);
     } catch (e) {
       setError(messageOf(e));
+      setUpgrade(entitlementFailure(e));
     }
   }, [clientId]);
   useEffect(() => {
@@ -43,6 +46,7 @@ export default function NotesPanel({ clientId }) {
       await refresh();
     } catch (e) {
       setError(messageOf(e));
+      setUpgrade(entitlementFailure(e));
     } finally {
       setBusy(false);
     }
@@ -56,6 +60,7 @@ export default function NotesPanel({ clientId }) {
       await refresh();
     } catch (e) {
       setError(messageOf(e));
+      setUpgrade(entitlementFailure(e));
     } finally {
       setBusy(false);
     }
@@ -63,6 +68,7 @@ export default function NotesPanel({ clientId }) {
   return (
     <section className="card">
       <h2>Clinical documentation</h2>
+      {upgrade && <UpgradePrompt feature={upgrade.feature} onDismiss={() => setUpgrade(null)} />}
       {error && (
         <p className="error" role="alert">
           {error}

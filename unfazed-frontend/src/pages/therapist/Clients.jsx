@@ -1,9 +1,11 @@
+import UpgradePrompt, { entitlementFailure } from '../../components/subscription/UpgradePrompt.jsx';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api, { messageOf } from '../../api/axiosInstance.js';
 import ClientTable from '../../components/crm/ClientTable.jsx';
 import useEntitlement from '../../hooks/useEntitlement.js';
 export default function Clients() {
+  const [upgrade, setUpgrade] = useState(null);
   const [clients, setClients] = useState([]),
     [filter, setFilter] = useState({
       search: '',
@@ -70,14 +72,21 @@ export default function Clients() {
       setVersion((v) => v + 1);
     } catch (e) {
       setError(messageOf(e));
+      setUpgrade(entitlementFailure(e));
     }
   }
   if (access.loading) return <main>Loading client access…</main>;
-  if (!access.allowed) return <main>Client management is unavailable.</main>;
+  if (!access.allowed)
+    return (
+      <main>
+        <UpgradePrompt feature="crm" />
+      </main>
+    );
   return (
     <main>
       <p className="eyebrow">PEOPLE AT THE HEART OF YOUR PRACTICE</p>
       <h1>Your clients</h1>
+      {upgrade && <UpgradePrompt feature={upgrade.feature} onDismiss={() => setUpgrade(null)} />}
       {error && (
         <p className="error" role="alert">
           {error}

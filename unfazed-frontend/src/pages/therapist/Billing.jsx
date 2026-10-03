@@ -1,3 +1,4 @@
+import UpgradePrompt from '../../components/subscription/UpgradePrompt.jsx';
 import { useEffect, useState } from 'react';
 import api, { messageOf } from '../../api/axiosInstance.js';
 import useEntitlement from '../../hooks/useEntitlement.js';
@@ -31,7 +32,7 @@ export default function Billing() {
   if (!access.allowed)
     return (
       <main>
-        Billing is unavailable.
+        <UpgradePrompt feature="payments" />
         <PackageManager />
       </main>
     );

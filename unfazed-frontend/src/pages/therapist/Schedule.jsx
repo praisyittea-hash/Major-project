@@ -1,3 +1,4 @@
+import UpgradePrompt from '../../components/subscription/UpgradePrompt.jsx';
 import { useEffect, useState } from 'react';
 import api, { messageOf } from '../../api/axiosInstance.js';
 import useEntitlement from '../../hooks/useEntitlement.js';
@@ -66,7 +67,12 @@ export default function Schedule() {
     }
   }
   if (access.loading) return <main>Loading scheduling access…</main>;
-  if (!access.allowed) return <main>Scheduling is unavailable for your practice.</main>;
+  if (!access.allowed)
+    return (
+      <main>
+        <UpgradePrompt feature="scheduling" />
+      </main>
+    );
   if (!availability)
     return (
       <main>

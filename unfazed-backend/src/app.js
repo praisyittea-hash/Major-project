@@ -1,3 +1,4 @@
+import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
@@ -72,6 +73,7 @@ app.use('/api/notes', noteRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 app.use(express.static(fileURLToPath(new URL('../../unfazed-frontend/dist', import.meta.url))));
 app.get('/:slug', async (req, res, next) => {
   const therapist = await Therapist.findOne({ slug: req.params.slug });

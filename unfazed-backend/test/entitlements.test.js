@@ -219,3 +219,37 @@ test('note templates and analytics depth obey live configuration changes and own
     )
     .expect(403);
 });
+test('upgrade requests persist without granting subscription access or accepting privileged fields', async () => {
+  const therapist = await Therapist.create({
+    name: 'Upgrade Fixture',
+    email: 'upgrade@example.test',
+    password_hash: 'fixture',
+    subscriptionConfig: 'starter',
+  });
+  const auth = { Authorization: `Bearer ${issueToken(therapist.id)}` };
+  await request(app).get('/api/subscription').set(auth).expect(200);
+  const first = await request(app)
+    .post('/api/subscription/upgrade-requests')
+    .set(auth)
+    .send({ targetKey: 'professional', therapist: '000000000000000000000001' })
+    .expect(201);
+  const second = await request(app)
+    .post('/api/subscription/upgrade-requests')
+    .set(auth)
+    .send({ targetKey: 'professional' })
+    .expect(201);
+  assert.equal(first.body.request._id, second.body.request._id);
+  assert.equal(
+    (await Therapist.findById(therapist.id).select('+subscriptionConfig')).subscriptionConfig,
+    'starter',
+  );
+  await request(app)
+    .post('/api/subscription/upgrade-requests')
+    .set(auth)
+    .send({ targetKey: 'unknown' })
+    .expect(404);
+  await request(app)
+    .post('/api/subscription/upgrade-requests')
+    .send({ targetKey: 'professional' })
+    .expect(401);
+});

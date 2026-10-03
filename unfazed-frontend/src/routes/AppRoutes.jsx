@@ -12,6 +12,7 @@ const Clients = lazy(() => import('../pages/therapist/Clients.jsx'));
 const ClientProfile = lazy(() => import('../pages/therapist/ClientProfile.jsx'));
 const ClientPortal = lazy(() => import('../pages/client/ClientPortal.jsx'));
 const Payment = lazy(() => import('../pages/client/Payment.jsx'));
+const Subscription = lazy(() => import('../pages/therapist/Subscription.jsx'));
 const Billing = lazy(() => import('../pages/therapist/Billing.jsx'));
 function Protected({ children }) {
   const { therapist, loading } = useAuth();
@@ -89,6 +90,14 @@ export default function AppRoutes() {
           element={
             <Protected>
               <Billing />
+            </Protected>
+          }
+        />
+        <Route
+          path="/subscription"
+          element={
+            <Protected>
+              <Subscription />
             </Protected>
           }
         />

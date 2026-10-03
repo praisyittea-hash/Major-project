@@ -1,3 +1,4 @@
+import UpgradePrompt, { entitlementFailure } from '../../components/subscription/UpgradePrompt.jsx';
 import ChatWindow from '../../components/chat/ChatWindow.jsx';
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -7,6 +8,7 @@ import NotesPanel from '../../components/notes/NotesPanel.jsx';
 import ClientCard from '../../components/crm/ClientCard.jsx';
 export default function ClientProfile() {
   const { id } = useParams();
+  const [upgrade, setUpgrade] = useState(null);
   const [client, setClient] = useState(null),
     [error, setError] = useState(''),
     [saved, setSaved] = useState('');
@@ -56,6 +58,7 @@ export default function ClientProfile() {
       setSaved('Client updated.');
     } catch (e) {
       setError(messageOf(e));
+      setUpgrade(entitlementFailure(e));
     }
   }
   const [portalUrl, setPortalUrl] = useState(''),
@@ -66,6 +69,7 @@ export default function ClientProfile() {
       setPortalUrl(data.url);
     } catch (e) {
       setError(messageOf(e));
+      setUpgrade(entitlementFailure(e));
     }
   }
   async function archive() {
@@ -76,6 +80,7 @@ export default function ClientProfile() {
       setSaved(data.message);
     } catch (e) {
       setError(messageOf(e));
+      setUpgrade(entitlementFailure(e));
     }
   }
   if (!client)
@@ -94,6 +99,7 @@ export default function ClientProfile() {
     <main>
       <Link to="/clients">← All clients</Link>
       <h1>Client profile</h1>
+      {upgrade && <UpgradePrompt feature={upgrade.feature} onDismiss={() => setUpgrade(null)} />}
       <ClientCard client={client} />
       {error && (
         <p className="error" role="alert">
