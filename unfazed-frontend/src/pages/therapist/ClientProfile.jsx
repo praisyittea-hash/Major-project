@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import api, { messageOf } from '../../api/axiosInstance.js';
+import NotesPanel from '../../components/notes/NotesPanel.jsx';
 import ClientCard from '../../components/crm/ClientCard.jsx';
 export default function ClientProfile() {
   const { id } = useParams();
@@ -300,24 +301,7 @@ export default function ClientProfile() {
           <p>No payments yet.</p>
         )}
       </section>
-      <section className="card">
-        <h2>Notes history</h2>
-        {!history ? (
-          <p>Loading notes…</p>
-        ) : history.notes.length ? (
-          history.notes.map((n) => (
-            <article className="card" key={n._id}>
-              <p className="muted">{new Date(n.createdAt).toLocaleDateString()}</p>
-              <h3>Private</h3>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{n.privateContent || 'No private content'}</p>
-              <h3>Shared with client</h3>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{n.sharedContent || 'No shared content'}</p>
-            </article>
-          ))
-        ) : (
-          <p>No notes yet. Note authoring is planned for a later module.</p>
-        )}
-      </section>
+      <NotesPanel key={id} clientId={id} />
       <section className="card">
         <h2>Consent audit</h2>
         {audit.length ? (
