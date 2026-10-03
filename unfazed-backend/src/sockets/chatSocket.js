@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { conversationAccess, messageText } from '../services/chatService.js';
 import { readToken } from '../services/tokenService.js';
 import Therapist from '../models/Therapist.js';
 import Client from '../models/Client.js';
@@ -30,6 +32,34 @@ export function attachChatSocket(io) {
     );
     timer.unref();
     socket.on('disconnect', () => clearTimeout(timer));
+    const handle = (event, action) =>
+      socket.on(event, async (payload, ack) => {
+        if (typeof ack !== 'function') return;
+        try {
+          const auth = readToken(socket.handshake.auth.token);
+          const conversation = await conversationAccess(auth, payload?.clientId);
+          ack({ ok: true, ...(await action(payload, conversation, auth)) });
+        } catch (error) {
+          ack({ ok: false, message: error.status ? error.message : 'Chat request failed' });
+        }
+      });
+    handle('chat:join', async (_payload, conversation) => {
+      if (socket.rooms.size >= 20) throw new Error('Room limit');
+      await socket.join(conversation.room);
+      return { room: conversation.room };
+    });
+    handle('chat:send', async (payload, conversation, auth) => {
+      const message = {
+        _id: randomUUID(),
+        client: conversation.client,
+        sender: auth.sub,
+        senderRole: auth.role,
+        text: messageText(payload.text),
+        createdAt: new Date().toISOString(),
+      };
+      chat.to(conversation.room).emit('chat:message', message);
+      return { message };
+    });
   });
   return chat;
 }

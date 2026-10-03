@@ -64,3 +64,55 @@ test('dedicated chat namespace requires a current therapist/client JWT', async (
     clientSocket.disconnect();
   }
 });
+test('only the owning therapist and client can join a conversation; messages arrive in both directions', async () => {
+  const a = socket(issueToken(therapist.id)),
+    b = socket(clientToken());
+  const outsider = await Therapist.create({
+    name: 'Outsider',
+    email: 'outsider@example.test',
+    password_hash: 'fixture',
+  });
+  const c = socket(issueToken(outsider.id));
+  try {
+    await Promise.all([connected(a), connected(b), connected(c)]);
+    for (const s of [a, b])
+      assert.equal(
+        (await s.timeout(3000).emitWithAck('chat:join', { clientId: client.id })).ok,
+        true,
+      );
+    assert.equal(
+      (await c.timeout(3000).emitWithAck('chat:join', { clientId: client.id })).ok,
+      false,
+    );
+    assert.equal(
+      (await b.timeout(3000).emitWithAck('chat:join', { clientId: outsider.id })).ok,
+      false,
+    );
+    for (const [sender, receiver, text] of [
+      [a, b, 'Hello from therapist'],
+      [b, a, 'Hello from client'],
+    ]) {
+      const received = new Promise((resolve) => receiver.once('chat:message', resolve));
+      const result = await sender.timeout(3000).emitWithAck('chat:send', {
+        clientId: client.id,
+        text,
+        clientMessageId: crypto.randomUUID(),
+      });
+      assert.equal(result.ok, true);
+      assert.equal((await received).text, text);
+    }
+    assert.equal(
+      (await c.timeout(3000).emitWithAck('chat:send', { clientId: client.id, text: 'Intrusion' }))
+        .ok,
+      false,
+    );
+    assert.equal(
+      (await a.timeout(3000).emitWithAck('chat:send', { clientId: client.id, text: '' })).ok,
+      false,
+    );
+  } finally {
+    a.disconnect();
+    b.disconnect();
+    c.disconnect();
+  }
+});
