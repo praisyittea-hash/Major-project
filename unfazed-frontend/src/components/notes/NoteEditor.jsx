@@ -58,6 +58,7 @@ export default function NoteEditor({ value, onChange, onSubmit, busy }) {
       <label>
         Note format
         <select
+          disabled={!editor || busy}
           value={value.format}
           onChange={(event) => {
             const format = event.target.value;

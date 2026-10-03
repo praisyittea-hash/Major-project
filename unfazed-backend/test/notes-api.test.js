@@ -202,3 +202,22 @@ test('DAP notes support editing and enforce the same private/shared boundary as 
     .send({ format: 'dap', content: { ...content, subjective: 'Wrong format' } })
     .expect(400);
 });
+test('sharing then making a note private withdraws it from both client-facing APIs', async () => {
+  const created = await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(auth)
+    .send({ type: 'shared', content: richText('Withdrawn shared note fixture') })
+    .expect(201);
+  await request(app)
+    .patch(`/api/notes/${created.body.note._id}`)
+    .set(auth)
+    .send({ type: 'private' })
+    .expect(200);
+  const clientAuth = {
+    Authorization: `Bearer ${issueToken(client.id, 'client', { therapistId: therapist.id })}`,
+  };
+  for (const path of ['/api/portal/notes', '/api/portal/history']) {
+    const response = await request(app).get(path).set(clientAuth).expect(200);
+    assert.ok(!response.text.includes('Withdrawn shared note fixture'));
+  }
+});
