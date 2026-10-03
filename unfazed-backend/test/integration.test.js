@@ -1226,3 +1226,22 @@ test('profile editing cannot remove services referenced by appointments or paid 
     .expect(200);
   assert.equal((await Therapist.findById(therapist.id)).services[0].id, therapist.services[0].id);
 });
+import DomainEvent from '../src/models/DomainEvent.js';
+import { NotificationService } from '../src/services/notificationService.js';
+test('real booking and signed payment API flows publish durable notification events without secrets', async () => {
+  const paid = await DomainEvent.findOne({ key: `payment:${paymentId}:captured` });
+  assert.equal(paid.kind, 'payment.captured');
+  assert.equal(await DomainEvent.countDocuments({ key: `payment:${paymentId}:captured` }), 1);
+  const confirmed = await DomainEvent.findOne({ key: `booking:${paidSessionId}:confirmed` });
+  assert.equal(confirmed.kind, 'booking.confirmed');
+  assert.ok(await DomainEvent.exists({ kind: 'payment.failed' }));
+  await NotificationService.dispatchPending();
+  const events = await request(app)
+    .get('/api/notifications')
+    .set('Authorization', `Bearer ${token}`)
+    .expect(200);
+  assert.ok(events.body.events.some((event) => event.kind === 'payment.captured'));
+  assert.ok(!events.text.includes('checkout-fixture-secret'));
+  assert.ok(!events.text.includes('webhook-fixture-secret'));
+  await request(app).get('/api/notifications').expect(401);
+});

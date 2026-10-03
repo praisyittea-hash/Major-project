@@ -1,3 +1,4 @@
+import { NotificationService } from './notificationService.js';
 import ClientPackage from '../models/ClientPackage.js';
 import { redeemPackage } from './packageService.js';
 import { paymentConfig } from '../config/payments.js';
@@ -60,6 +61,18 @@ export async function createBooking(
         { _id: pkg.id },
         { $addToSet: { usedSessions: session.id } },
         { session: transaction },
+      );
+    if (session.status === 'confirmed')
+      await NotificationService.publish(
+        {
+          key: `booking:${session.id}:confirmed`,
+          kind: 'booking.confirmed',
+          therapist: therapist.id,
+          client: session.client,
+          recipient: contact.email,
+          payload: { sessionId: session.id, start: session.start },
+        },
+        transaction,
       );
     return session;
   });

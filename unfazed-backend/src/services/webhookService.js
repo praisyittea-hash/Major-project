@@ -1,3 +1,5 @@
+import Client from '../models/Client.js';
+import { NotificationService } from './notificationService.js';
 import { invoiceStorage } from './storageService.js';
 import mongoose from 'mongoose';
 import Payment from '../models/Payment.js';
@@ -32,6 +34,18 @@ export async function processPaymentEvent(event, eventId) {
       if (!['captured', 'refund_required', 'refunded'].includes(payment.status)) {
         payment.status = 'failed';
         payment.failureReason = 'Gateway reported a failed payment attempt';
+        const client = await Client.findById(payment.client).session(transaction);
+        await NotificationService.publish(
+          {
+            key: `payment:${payment.id}:failed:${entity.id}`,
+            kind: 'payment.failed',
+            therapist: payment.therapist,
+            client: payment.client,
+            recipient: client.email,
+            payload: { paymentId: payment.id },
+          },
+          transaction,
+        );
         if (payment.session)
           await Session.updateOne(
             { _id: payment.session, status: 'pending_payment' },
@@ -52,6 +66,18 @@ export async function processPaymentEvent(event, eventId) {
     payment.gateway_transaction_id = entity.id;
     payment.status = 'captured';
     payment.capturedAt = new Date();
+    const client = await Client.findById(payment.client).session(transaction);
+    await NotificationService.publish(
+      {
+        key: `payment:${payment.id}:captured`,
+        kind: 'payment.captured',
+        therapist: payment.therapist,
+        client: payment.client,
+        recipient: client.email,
+        payload: { paymentId: payment.id, amount: payment.amount, currency: payment.currency },
+      },
+      transaction,
+    );
     payment.failureReason = undefined;
     if (payment.session) {
       await Availability.updateOne(
@@ -74,6 +100,17 @@ export async function processPaymentEvent(event, eventId) {
       } else {
         session.status = 'confirmed';
         session.paymentStatus = 'paid';
+        await NotificationService.publish(
+          {
+            key: `booking:${session.id}:confirmed`,
+            kind: 'booking.confirmed',
+            therapist: session.therapist,
+            client: session.client,
+            recipient: session.contact.email,
+            payload: { sessionId: session.id, start: session.start },
+          },
+          transaction,
+        );
         session.holdExpiresAt = undefined;
       }
       await session.save({ session: transaction });
