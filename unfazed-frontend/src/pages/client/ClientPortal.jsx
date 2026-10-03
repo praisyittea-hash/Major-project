@@ -1,3 +1,4 @@
+import ChatWindow from '../../components/chat/ChatWindow.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import clientApi, { acceptPortalLink } from '../../api/clientApi.js';
 import { messageOf } from '../../api/axiosInstance.js';
@@ -110,6 +111,7 @@ export default function ClientPortal() {
           <p>No sessions yet.</p>
         )}
       </section>
+      <ChatWindow clientId={client._id} role="client" />
       <SharedNotes notes={history?.notes} />
       <section className="card">
         <h2>Your payments</h2>

@@ -1,3 +1,4 @@
+import ChatWindow from '../../components/chat/ChatWindow.jsx';
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -224,6 +225,7 @@ export default function ClientProfile() {
           <p>No payments yet.</p>
         )}
       </section>
+      <ChatWindow key={`chat-${id}`} clientId={id} role="therapist" />
       <NotesPanel key={id} clientId={id} />
       <section className="card">
         <h2>Consent audit</h2>
