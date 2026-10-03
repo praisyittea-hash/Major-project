@@ -1,13 +1,23 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 import { authenticate, therapistOnly } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validate.js';
 import { updateProfile } from '../controllers/therapistController.js';
 import { validateSlug } from '../utils/generateSlug.js';
-import { entitlementsFor } from '../services/entitlementService.js';
+import { entitlementsFor, canAccess } from '../services/entitlementService.js';
 const router = Router();
 router.use(authenticate, therapistOnly);
 router.get('/entitlements', async (req, res) => res.json(await entitlementsFor(req.therapist)));
+router.get(
+  '/entitlements/:featureKey',
+  param('featureKey').matches(/^[a-z_]{1,64}$/),
+  validate,
+  async (req, res) =>
+    res.json({
+      feature: req.params.featureKey,
+      allowed: await canAccess(req.therapist.id, req.params.featureKey),
+    }),
+);
 router.get('/me', (req, res) => res.json({ therapist: req.therapist }));
 router.patch(
   '/me',

@@ -5,9 +5,9 @@ export default function useEntitlement(feature) {
   useEffect(() => {
     let active = true;
     api
-      .get('/therapists/entitlements')
+      .get(`/therapists/entitlements/${feature}`)
       .then(({ data }) => {
-        if (active) setAccess({ loading: false, allowed: data.features[feature] === true });
+        if (active) setAccess({ loading: false, allowed: data.allowed === true });
       })
       .catch(() => {
         if (active) setAccess({ loading: false, allowed: false });

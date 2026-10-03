@@ -66,3 +66,37 @@ test('legacy default configuration gains new flags once while preserving explici
   config = await SubscriptionTierConfig.findOne({ key: 'default' });
   assert.equal(config.features.get('note_dap'), undefined);
 });
+import request from 'supertest';
+import { app } from '../src/app.js';
+import { canAccess, assertAccess } from '../src/services/entitlementService.js';
+import { issueToken } from '../src/services/tokenService.js';
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'isolated-entitlement-test-secret-never-production';
+test('canAccess is the source for feature API decisions and standardized upgrade denial', async () => {
+  const therapist = await Therapist.create({
+    name: 'Gate Fixture',
+    email: 'gate@example.test',
+    password_hash: 'fixture',
+    subscriptionConfig: 'professional',
+  });
+  const auth = { Authorization: `Bearer ${issueToken(therapist.id)}` };
+  assert.equal(await canAccess(therapist.id, 'analytics_advanced'), true);
+  assert.equal(await canAccess(therapist.id, 'unknown_feature'), false);
+  const decision = await request(app)
+    .get('/api/therapists/entitlements/analytics_advanced')
+    .set(auth)
+    .expect(200);
+  assert.equal(decision.body.allowed, true);
+  await assert.rejects(
+    assertAccess(therapist.id, 'unknown_feature'),
+    (error) => error.code === 'ENTITLEMENT_REQUIRED' && error.upgradePath === '/subscription',
+  );
+  await request(app).get('/api/therapists/entitlements/analytics_advanced').expect(401);
+  await SubscriptionTierConfig.updateOne(
+    { key: 'professional' },
+    { $set: { 'features.crm': false } },
+  );
+  const blocked = await request(app).get('/api/clients').set(auth).expect(403);
+  assert.equal(blocked.body.code, 'ENTITLEMENT_REQUIRED');
+  assert.equal(blocked.body.feature, 'crm');
+});

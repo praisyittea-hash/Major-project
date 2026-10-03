@@ -17,6 +17,9 @@ export function errorHandler(error, _req, res, _next) {
         : 500);
   if (status >= 500 && process.env.NODE_ENV !== 'test') console.error(error.message);
   res.status(status).json({
+    ...(error.code === 'ENTITLEMENT_REQUIRED'
+      ? { code: error.code, feature: error.feature, upgradePath: error.upgradePath }
+      : {}),
     message:
       status >= 500
         ? 'An unexpected error occurred'

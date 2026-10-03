@@ -1,9 +1,10 @@
+import { HttpError } from '../middleware/errorHandler.js';
 import Therapist from '../models/Therapist.js';
 import SubscriptionTierConfig from '../models/SubscriptionTierConfig.js';
 const denied = () => ({ features: {}, caps: {}, configured: false });
 const plain = (map) => Object.fromEntries(map instanceof Map ? map : Object.entries(map || {}));
 export async function entitlementsFor(therapist, { session = null } = {}) {
-  const id = therapist?.id || therapist?._id || therapist;
+  const id = typeof therapist === 'string' ? therapist : therapist?._id || therapist?.id;
   if (!id) return denied();
   const account = await Therapist.findById(id).select('+subscriptionConfig').session(session);
   if (!account) return denied();
@@ -23,8 +24,27 @@ export async function entitlementsFor(therapist, { session = null } = {}) {
     },
   };
 }
-export async function hasFeature(therapist, feature) {
-  const access = await entitlementsFor(therapist);
-  return access.features[feature] === true;
+
+export async function canAccess(therapistId, featureKey, options = {}) {
+  const access = await entitlementsFor(therapistId, options);
+  return access.configured && access.features[featureKey] === true;
 }
-export const EntitlementService = { entitlementsFor, hasFeature };
+export async function hasFeature(therapist, feature) {
+  return canAccess(
+    typeof therapist === 'string' ? therapist : String(therapist?._id || therapist?.id || ''),
+    feature,
+  );
+}
+export async function assertAccess(therapistId, featureKey, options = {}) {
+  if (!(await canAccess(therapistId, featureKey, options))) {
+    const error = new HttpError(
+      403,
+      'This feature is unavailable for your current subscription. Review upgrade options.',
+    );
+    error.code = 'ENTITLEMENT_REQUIRED';
+    error.feature = featureKey;
+    error.upgradePath = '/subscription';
+    throw error;
+  }
+}
+export const EntitlementService = { entitlementsFor, canAccess, hasFeature, assertAccess };
