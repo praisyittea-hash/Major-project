@@ -1,4 +1,5 @@
 import { clientHistory } from '../services/clientHistoryService.js';
+import { sharedNotes } from '../services/noteSerializer.js';
 import { portalBook } from '../controllers/schedulingController.js';
 import { Router } from 'express';
 import { body } from 'express-validator';
@@ -9,6 +10,7 @@ import { intakeTemplate } from '../config/intake.js';
 import { submitIntake } from '../controllers/intakeController.js';
 const router = Router();
 router.use(authenticate, clientOnly);
+router.get('/notes', async (req, res) => res.json({ notes: await sharedNotes(req.client) }));
 router.get('/history', async (req, res) =>
   res.json(await clientHistory(req.client, { sharedOnly: true })),
 );

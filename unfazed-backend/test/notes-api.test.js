@@ -103,3 +103,43 @@ test('note ownership is enforced for every operation and foreign references cann
   await request(app).patch(path).set(auth).send({}).expect(400);
   await request(app).patch(path).set(clientAuth).send({ title: 'Client edit' }).expect(403);
 });
+test('direct client-facing notes and history APIs return shared content and never private content', async () => {
+  const clientAuth = {
+    Authorization: `Bearer ${issueToken(client.id, 'client', { therapistId: therapist.id })}`,
+  };
+  for (const [type, text] of [
+    ['private', 'This is private therapist information.'],
+    ['shared', 'This information is safe for the client.'],
+  ]) {
+    await request(app)
+      .post(`/api/notes/client/${client.id}`)
+      .set(auth)
+      .send({ type, content: richText(text) })
+      .expect(201);
+  }
+  for (const path of ['/api/portal/notes', '/api/portal/history']) {
+    const response = await request(app).get(path).set(clientAuth).expect(200);
+    assert.ok(response.text.includes('This information is safe for the client.'));
+    assert.ok(!response.text.includes('This is private therapist information.'));
+    assert.ok(!response.text.includes('privateContent'));
+    assert.ok(response.body.notes.every((note) => note.type === 'shared'));
+    await request(app).get(path).expect(401);
+    await request(app).get(path).set(auth).expect(403);
+    const wrongTenant = {
+      Authorization: `Bearer ${issueToken(client.id, 'client', { therapistId: client.id })}`,
+    };
+    await request(app).get(path).set(wrongTenant).expect(403);
+  }
+  const unrelated = await Client.create({
+    therapist: therapist.id,
+    name: 'Unrelated Client',
+    email: 'unrelated@example.test',
+  });
+  const ownOnly = await request(app)
+    .get(`/api/portal/notes?client=${client.id}`)
+    .set({
+      Authorization: `Bearer ${issueToken(unrelated.id, 'client', { therapistId: therapist.id })}`,
+    })
+    .expect(200);
+  assert.deepEqual(ownOnly.body.notes, []);
+});

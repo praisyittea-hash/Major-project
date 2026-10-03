@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Session from '../models/Session.js';
 import SessionNote from '../models/SessionNote.js';
+import { sharedNotes } from './noteSerializer.js';
 export async function clientHistory(client, { sharedOnly = false } = {}) {
   const filter = { client: client.id, therapist: client.therapist };
   const [sessions, payments, notes] = await Promise.all([
@@ -13,11 +14,11 @@ export async function clientHistory(client, { sharedOnly = false } = {}) {
           .limit(200)
       : [],
     sharedOnly
-      ? SessionNote.find({ ...filter, sharedContent: { $ne: '' } })
-          .select('sharedContent session createdAt')
+      ? sharedNotes(client)
+      : SessionNote.find(filter)
+          .select('+privateContent +content')
           .sort({ createdAt: -1 })
-          .limit(200)
-      : SessionNote.find(filter).select('+privateContent').sort({ createdAt: -1 }).limit(200),
+          .limit(200),
   ]);
   return { sessions, payments, notes };
 }
