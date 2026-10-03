@@ -1,3 +1,4 @@
+import Client from '../models/Client.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import Therapist from '../models/Therapist.js';
 import SubscriptionTierConfig from '../models/SubscriptionTierConfig.js';
@@ -27,7 +28,23 @@ export async function entitlementsFor(therapist, { session = null } = {}) {
 
 export async function canAccess(therapistId, featureKey, options = {}) {
   const access = await entitlementsFor(therapistId, options);
-  return access.configured && access.features[featureKey] === true;
+  if (!access.configured) return false;
+  if (featureKey === 'clients_add') {
+    if (
+      access.features.crm !== true ||
+      (access.features.clients_add ?? access.features.crm) !== true
+    )
+      return false;
+    const cap = access.caps.clients;
+    if (cap === null) return true;
+    if (!Number.isSafeInteger(cap) || cap < 0) return false;
+    const id = typeof therapistId === 'string' ? therapistId : therapistId?._id || therapistId?.id;
+    const active = await Client.countDocuments({ therapist: id, status: 'active' }).session(
+      options.session || null,
+    );
+    return active < cap;
+  }
+  return access.features[featureKey] === true;
 }
 export async function hasFeature(therapist, feature) {
   return canAccess(

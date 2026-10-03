@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 import Therapist from '../models/Therapist.js';
 import Client from '../models/Client.js';
 import { HttpError } from '../middleware/errorHandler.js';
-import { entitlementsFor } from '../services/entitlementService.js';
+import { assertAccess } from '../services/entitlementService.js';
 const fields = ['name', 'email', 'phone', 'status', 'tags'];
 const pick = (body) =>
   Object.fromEntries(
@@ -14,13 +14,8 @@ const pick = (body) =>
 export async function createClient(req, res) {
   const client = await mongoose.connection.transaction(async (session) => {
     await Therapist.updateOne({ _id: req.therapist.id }, { $inc: { crmRevision: 1 } }, { session });
-    const access = await entitlementsFor(req.therapist),
-      count = await Client.countDocuments({
-        therapist: req.therapist.id,
-        status: { $ne: 'archived' },
-      }).session(session);
-    if (Number.isFinite(access.caps.clients) && count >= access.caps.clients)
-      throw new HttpError(403, 'Client capacity reached');
+    if (!req.body.status || req.body.status === 'active')
+      await assertAccess(req.therapist.id, 'clients_add', { session });
     const [client] = await Client.create([{ ...pick(req.body), therapist: req.therapist.id }], {
       session,
     });
@@ -103,17 +98,8 @@ export async function updateClient(req, res) {
       .select('+intake')
       .session(session);
     if (!client) throw new HttpError(404, 'Client not found');
-    if (client.status === 'archived' && req.body.status && req.body.status !== 'archived') {
-      const access = await entitlementsFor(req.therapist);
-      if (
-        Number.isFinite(access.caps.clients) &&
-        (await Client.countDocuments({
-          therapist: req.therapist.id,
-          status: { $ne: 'archived' },
-        }).session(session)) >= access.caps.clients
-      )
-        throw new HttpError(403, 'Client capacity reached');
-    }
+    if (client.status !== 'active' && req.body.status === 'active')
+      await assertAccess(req.therapist.id, 'clients_add', { session });
     Object.assign(client, pick(req.body));
     await client.save({ session });
     return client;

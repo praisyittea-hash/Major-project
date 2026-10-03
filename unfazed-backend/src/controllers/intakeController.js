@@ -4,7 +4,7 @@ import Client from '../models/Client.js';
 import Therapist from '../models/Therapist.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { issueToken } from '../services/tokenService.js';
-import { hasFeature, entitlementsFor } from '../services/entitlementService.js';
+import { hasFeature, assertAccess } from '../services/entitlementService.js';
 import { persistIntake } from '../services/intakeService.js';
 export async function submitIntake(req, res) {
   res.json({ client: await persistIntake(req.client, req.body) });
@@ -28,15 +28,7 @@ export async function bookingIntake(req, res) {
     if (client && String(client.originBooking) !== session.id)
       throw new HttpError(409, 'Please ask the practice for your existing client portal link');
     if (!client) {
-      const access = await entitlementsFor(therapist);
-      if (
-        Number.isFinite(access.caps.clients) &&
-        (await Client.countDocuments({
-          therapist: therapist.id,
-          status: { $ne: 'archived' },
-        }).session(transaction)) >= access.caps.clients
-      )
-        throw new HttpError(403, 'Practice client capacity reached');
+      await assertAccess(therapist.id, 'clients_add', { session: transaction });
       [client] = await Client.create(
         [
           {

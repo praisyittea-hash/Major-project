@@ -100,3 +100,52 @@ test('canAccess is the source for feature API decisions and standardized upgrade
   assert.equal(blocked.body.code, 'ENTITLEMENT_REQUIRED');
   assert.equal(blocked.body.feature, 'crm');
 });
+test('active client cap gates concurrent creation, activation and restoration through canAccess', async () => {
+  await SubscriptionTierConfig.create({
+    key: 'cap-gate',
+    features: { crm: true, clients_add: true },
+    caps: { clients: 1 },
+  });
+  const therapist = await Therapist.create({
+    name: 'Capacity Fixture',
+    email: 'capgate@example.test',
+    password_hash: 'fixture',
+    subscriptionConfig: 'cap-gate',
+  });
+  const auth = { Authorization: `Bearer ${issueToken(therapist.id)}` };
+  const results = await Promise.all(
+    [0, 1, 2].map((n) =>
+      request(app)
+        .post('/api/clients')
+        .set(auth)
+        .send({ name: `Cap Client ${n}`, email: `capgate${n}@example.test` }),
+    ),
+  );
+  assert.equal(results.filter((result) => result.status === 201).length, 1);
+  assert.equal(results.filter((result) => result.status === 403).length, 2);
+  assert.equal(await canAccess(therapist.id, 'clients_add'), false);
+  const inactive = await request(app)
+    .post('/api/clients')
+    .set(auth)
+    .send({ name: 'Inactive Fixture', email: 'inactivecap@example.test', status: 'inactive' })
+    .expect(201);
+  await request(app)
+    .patch(`/api/clients/${inactive.body.client._id}`)
+    .set(auth)
+    .send({ status: 'active' })
+    .expect(403);
+  await SubscriptionTierConfig.updateOne({ key: 'cap-gate' }, { $set: { 'caps.clients': 2 } });
+  assert.equal(await canAccess(therapist.id, 'clients_add'), true);
+  await request(app)
+    .patch(`/api/clients/${inactive.body.client._id}`)
+    .set(auth)
+    .send({ status: 'active' })
+    .expect(200);
+  await request(app).delete(`/api/clients/${inactive.body.client._id}`).set(auth).expect(200);
+  await SubscriptionTierConfig.updateOne({ key: 'cap-gate' }, { $set: { 'caps.clients': 1 } });
+  await request(app)
+    .patch(`/api/clients/${inactive.body.client._id}`)
+    .set(auth)
+    .send({ status: 'active' })
+    .expect(403);
+});
