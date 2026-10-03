@@ -1,3 +1,4 @@
+import { ensureTierConfigs } from './src/services/subscriptionConfigService.js';
 import { startNotificationWorker } from './src/services/sessionNotificationService.js';
 import { attachChatSocket } from './src/sockets/chatSocket.js';
 import './src/config/loadEnv.js';
@@ -9,6 +10,7 @@ import mongoose from 'mongoose';
 import { startReservationWorker } from './src/services/reservationService.js';
 validateEnv();
 await connectDB();
+await ensureTierConfigs();
 await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
 const server = app.listen(process.env.PORT || 5000, '0.0.0.0', () =>
   console.log('Unfazed API listening; MongoDB connected'),
