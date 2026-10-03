@@ -1,3 +1,4 @@
+import { attachChatSocket } from './src/sockets/chatSocket.js';
 import './src/config/loadEnv.js';
 import { app } from './src/app.js';
 import { connectDB } from './src/config/db.js';
@@ -12,6 +13,7 @@ const server = app.listen(process.env.PORT || 5000, '0.0.0.0', () =>
   console.log('Unfazed API listening; MongoDB connected'),
 );
 const io = attachSchedulingSocket(server);
+attachChatSocket(io);
 const stopWorker = startReservationWorker();
 for (const signal of ['SIGINT', 'SIGTERM'])
   process.on(signal, () => {
