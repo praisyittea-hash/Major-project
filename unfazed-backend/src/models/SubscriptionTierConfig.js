@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 const schema = new mongoose.Schema(
   {
     key: { type: String, unique: true, required: true },
+    configVersion: Number,
     name: { type: String, trim: true, maxLength: 100 },
     pricePaise: {
       type: Number,

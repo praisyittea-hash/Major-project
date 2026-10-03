@@ -8,8 +8,7 @@ import Session from '../src/models/Session.js';
 import Availability from '../src/models/Availability.js';
 import { generateSlug } from '../src/utils/generateSlug.js';
 import Therapist from '../src/models/Therapist.js';
-import SubscriptionTierConfig from '../src/models/SubscriptionTierConfig.js';
-import { defaultEntitlements } from '../src/config/features.js';
+import { ensureTierConfigs } from '../src/services/subscriptionConfigService.js';
 export async function seed() {
   if (process.env.SEED_DATABASE_ALLOW !== 'true')
     throw new Error(
@@ -35,11 +34,7 @@ export async function seed() {
       languages: ['English', 'Malayalam'],
     },
   ];
-  await SubscriptionTierConfig.updateOne(
-    { key: 'default' },
-    { $setOnInsert: defaultEntitlements },
-    { upsert: true },
-  );
+  await ensureTierConfigs();
   for (const data of therapists) {
     if (await Therapist.exists({ email: data.email })) continue;
     await Therapist.create({
