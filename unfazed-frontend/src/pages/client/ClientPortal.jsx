@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import clientApi, { acceptPortalLink } from '../../api/clientApi.js';
 import { messageOf } from '../../api/axiosInstance.js';
+import SharedNotes from '../../components/notes/SharedNotes.jsx';
 import IntakeForm from '../../components/crm/IntakeForm.jsx';
 import InvoiceView from '../../components/payments/InvoiceView.jsx';
 import ClientPackages from '../../components/payments/ClientPackages.jsx';
@@ -109,20 +110,7 @@ export default function ClientPortal() {
           <p>No sessions yet.</p>
         )}
       </section>
-      <section className="card">
-        <h2>Shared reflections</h2>
-        {!history ? (
-          <p>Loading shared notes…</p>
-        ) : history.notes.length ? (
-          history.notes.map((n) => (
-            <p key={n._id} style={{ whiteSpace: 'pre-wrap' }}>
-              {n.sharedContent}
-            </p>
-          ))
-        ) : (
-          <p>No shared notes yet.</p>
-        )}
-      </section>
+      <SharedNotes notes={history?.notes} />
       <section className="card">
         <h2>Your payments</h2>
         {!history ? (
