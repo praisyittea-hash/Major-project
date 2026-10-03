@@ -9,6 +9,7 @@ import clientRoutes from './routes/clientRoutes.js';
 import portalRoutes from './routes/portalRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import packageRoutes from './routes/packageRoutes.js';
+import noteRoutes from './routes/noteRoutes.js';
 import { webhook } from './controllers/paymentController.js';
 import { rateLimit } from 'express-rate-limit';
 import authRoutes from './routes/authRoutes.js';
@@ -64,6 +65,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/portal', portalRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/packages', packageRoutes);
+app.use('/api/notes', noteRoutes);
 app.use(express.static(fileURLToPath(new URL('../../unfazed-frontend/dist', import.meta.url))));
 app.get('/:slug', async (req, res, next) => {
   const therapist = await Therapist.findOne({ slug: req.params.slug });
