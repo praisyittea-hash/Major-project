@@ -1,3 +1,4 @@
+import { assertAccess } from '../services/entitlementService.js';
 import { noteFormats } from '../../../shared/noteFormats.js';
 import { Router } from 'express';
 import { body, param } from 'express-validator';
@@ -46,6 +47,7 @@ router.post(
   async (req, res) => {
     await validateNoteReferences(req.therapist.id, req.params.clientId, req.body.session);
     validateNoteContent(req.body);
+    await assertAccess(req.therapist.id, `note_${req.body.format || 'freeform'}`);
     const note = await SessionNote.create({
       ...noteInput(req.body),
       therapist: req.therapist.id,
@@ -61,6 +63,7 @@ router.patch('/:id', param('id').isMongoId(), ...input, validate, async (req, re
   const note = await ownedNote(req.therapist.id, req.params.id);
   await validateNoteReferences(req.therapist.id, note.client, req.body.session || note.session);
   validateNoteContent({ ...note.toObject(), ...noteInput(req.body) });
+  await assertAccess(req.therapist.id, `note_${req.body.format || note.format || 'freeform'}`);
   Object.assign(note, noteInput(req.body));
   await note.save();
   res.json({ note });

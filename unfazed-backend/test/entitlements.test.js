@@ -149,3 +149,73 @@ test('active client cap gates concurrent creation, activation and restoration th
     .send({ status: 'active' })
     .expect(403);
 });
+import Client from '../src/models/Client.js';
+test('note templates and analytics depth obey live configuration changes and ownership', async () => {
+  await SubscriptionTierConfig.create({
+    key: 'templates-gate',
+    features: {
+      crm: true,
+      note_freeform: true,
+      note_soap: false,
+      note_dap: false,
+      analytics_basic: true,
+      analytics_advanced: false,
+    },
+    caps: { clients: 5 },
+  });
+  const therapist = await Therapist.create({
+    name: 'Template Gate',
+    email: 'templategate@example.test',
+    password_hash: 'fixture',
+    subscriptionConfig: 'templates-gate',
+  });
+  const client = await Client.create({
+    therapist: therapist.id,
+    name: 'Template Client',
+    email: 'templateclient@example.test',
+  });
+  const auth = { Authorization: `Bearer ${issueToken(therapist.id)}` };
+  const content = {
+    subjective: 'Report',
+    objective: 'Observed',
+    assessment: 'Assessment',
+    plan: 'Plan',
+  };
+  let response = await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(auth)
+    .send({ format: 'soap', content })
+    .expect(403);
+  assert.equal(response.body.feature, 'note_soap');
+  await request(app).get('/api/analytics/access?depth=basic').set(auth).expect(200);
+  response = await request(app).get('/api/analytics/access?depth=advanced').set(auth).expect(403);
+  assert.equal(response.body.feature, 'analytics_advanced');
+  await SubscriptionTierConfig.updateOne(
+    { key: 'templates-gate' },
+    { $set: { 'features.note_soap': true, 'features.analytics_advanced': true } },
+  );
+  const note = await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(auth)
+    .send({ format: 'soap', content })
+    .expect(201);
+  await request(app).get('/api/analytics/access?depth=advanced').set(auth).expect(200);
+  await SubscriptionTierConfig.updateOne(
+    { key: 'templates-gate' },
+    { $set: { 'features.note_soap': false } },
+  );
+  await request(app)
+    .patch(`/api/notes/${note.body.note._id}`)
+    .set(auth)
+    .send({ title: 'Blocked edit' })
+    .expect(403);
+  await request(app).get(`/api/notes/${note.body.note._id}`).set(auth).expect(200);
+  await request(app).get('/api/analytics/access').expect(401);
+  await request(app)
+    .get('/api/analytics/access')
+    .set(
+      'Authorization',
+      `Bearer ${issueToken(client.id, 'client', { therapistId: therapist.id })}`,
+    )
+    .expect(403);
+});
