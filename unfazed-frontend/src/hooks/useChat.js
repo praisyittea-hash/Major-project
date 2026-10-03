@@ -4,7 +4,8 @@ import { io } from 'socket.io-client';
 import api from '../api/axiosInstance.js';
 export default function useChat(clientId, role) {
   const socketRef = useRef(null),
-    typingTimer = useRef(null);
+    typingTimer = useRef(null),
+    lastTyping = useRef(0);
   const [peerTyping, setPeerTyping] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
   const http = role === 'client' ? clientApi : api;
@@ -99,10 +100,13 @@ export default function useChat(clientId, role) {
   }, [messages, connected, clientId, role]);
   function typing(value) {
     if (!connected) return;
-    socketRef.current
-      .timeout(5000)
-      .emitWithAck('chat:typing', { clientId, typing: value })
-      .catch(() => {});
+    const announce = !value || Date.now() - lastTyping.current > 1000;
+    if (announce) lastTyping.current = Date.now();
+    if (announce)
+      socketRef.current
+        .timeout(5000)
+        .emitWithAck('chat:typing', { clientId, typing: value })
+        .catch(() => {});
     clearTimeout(typingTimer.current);
     if (value) typingTimer.current = setTimeout(() => typing(false), 1500);
   }

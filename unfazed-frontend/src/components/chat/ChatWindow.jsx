@@ -55,6 +55,7 @@ export default function ChatWindow({ clientId, role }) {
         <label>
           Message
           <textarea
+            disabled={busy}
             maxLength={4000}
             value={text}
             onChange={(e) => {

@@ -1,3 +1,4 @@
+import NotificationFeed from '../../components/notifications/NotificationFeed.jsx';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 export default function Dashboard() {
@@ -36,6 +37,7 @@ export default function Dashboard() {
           Edit your profile
         </Link>
       </div>
+      <NotificationFeed />
     </main>
   );
 }

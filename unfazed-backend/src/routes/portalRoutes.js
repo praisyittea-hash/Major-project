@@ -1,3 +1,4 @@
+import NotificationJob from '../models/NotificationJob.js';
 import { clientHistory } from '../services/clientHistoryService.js';
 import { sharedNotes } from '../services/noteSerializer.js';
 import { portalBook } from '../controllers/schedulingController.js';
@@ -10,6 +11,14 @@ import { intakeTemplate } from '../config/intake.js';
 import { submitIntake } from '../controllers/intakeController.js';
 const router = Router();
 router.use(authenticate, clientOnly);
+router.get('/notifications', async (req, res) =>
+  res.json({
+    jobs: await NotificationJob.find({ therapist: req.client.therapist, client: req.client.id })
+      .select('kind channel status detail createdAt')
+      .sort({ createdAt: -1 })
+      .limit(100),
+  }),
+);
 router.get('/notes', async (req, res) => res.json({ notes: await sharedNotes(req.client) }));
 router.get('/history', async (req, res) =>
   res.json(await clientHistory(req.client, { sharedOnly: true })),

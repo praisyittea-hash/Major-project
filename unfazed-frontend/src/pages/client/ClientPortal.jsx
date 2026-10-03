@@ -1,3 +1,4 @@
+import NotificationFeed from '../../components/notifications/NotificationFeed.jsx';
 import ChatWindow from '../../components/chat/ChatWindow.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import clientApi, { acceptPortalLink } from '../../api/clientApi.js';
@@ -111,6 +112,7 @@ export default function ClientPortal() {
           <p>No sessions yet.</p>
         )}
       </section>
+      <NotificationFeed client />
       <ChatWindow clientId={client._id} role="client" />
       <SharedNotes notes={history?.notes} />
       <section className="card">

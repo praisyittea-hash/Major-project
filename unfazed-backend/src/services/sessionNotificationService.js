@@ -1,3 +1,4 @@
+import { deliverNotifications } from './notificationDeliveryService.js';
 import Session from '../models/Session.js';
 import { NotificationService } from './notificationService.js';
 import { notificationConfig } from '../config/notifications.js';
@@ -42,6 +43,7 @@ export function startNotificationWorker() {
     try {
       await scheduleSessionEvents();
       await NotificationService.dispatchPending();
+      await deliverNotifications();
     } catch (error) {
       console.error('Notification worker failed:', error.message);
     } finally {

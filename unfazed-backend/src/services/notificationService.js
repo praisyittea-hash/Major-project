@@ -1,12 +1,22 @@
 import DomainEvent from '../models/DomainEvent.js';
 import { notificationEvents } from '../config/notificationEvents.js';
 import NotificationJob from '../models/NotificationJob.js';
-// Replace this adapter with a delivery provider later. No external messages are sent.
+// Legacy waitlist calls default to a stub. Domain-event jobs use isolated delivery providers.
 export const notificationService = {
-  queue: async ({ key, kind, recipient, payload, event, therapist, client }) =>
+  queue: async ({
+    key,
+    kind,
+    recipient,
+    payload,
+    event,
+    therapist,
+    client,
+    channel,
+    status = 'stubbed',
+  }) =>
     NotificationJob.findOneAndUpdate(
       { key },
-      { $setOnInsert: { kind, recipient, payload, event, therapist, client, status: 'stubbed' } },
+      { $setOnInsert: { kind, recipient, payload, event, therapist, client, channel, status } },
       { upsert: true, new: true },
     ),
 };
@@ -27,15 +37,19 @@ export const NotificationService = {
       .sort({ createdAt: 1 })
       .limit(100);
     for (const event of events) {
-      await notificationService.queue({
-        key: `event:${event.key}`,
-        kind: event.kind,
-        recipient: event.recipient,
-        payload: event.payload,
-        event: event.id,
-        therapist: event.therapist,
-        client: event.client,
-      });
+      for (const channel of ['whatsapp', 'email'])
+        await notificationService.queue({
+          key: `event:${event.key}:${channel}`,
+          kind: event.kind,
+          recipient: event.recipient,
+          payload: event.payload,
+          event: event.id,
+          therapist: event.therapist,
+          client: event.client,
+          channel,
+          status:
+            channel === 'email' && process.env.EMAIL_ENABLED !== 'true' ? 'disabled' : 'queued',
+        });
       await DomainEvent.updateOne({ _id: event.id }, { $set: { dispatchedAt: new Date() } });
     }
     return events.length;
