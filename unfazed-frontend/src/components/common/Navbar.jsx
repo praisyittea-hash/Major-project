@@ -13,6 +13,7 @@ export default function Navbar() {
           <Link to="/clients">Clients</Link>
           <Link to="/schedule">Schedule</Link>
           <Link to="/billing">Billing</Link>
+          <Link to="/analytics">Analytics</Link>
           <Link to="/profile">Profile</Link>
           <Link to="/subscription">Subscription</Link>
           <button className="secondary" onClick={signOut}>

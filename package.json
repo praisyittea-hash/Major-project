@@ -17,13 +17,15 @@
     "dev": "node scripts/dev.js",
     "start": "node unfazed-backend/server.js",
     "test:tooling": "node --test scripts/test/*.test.js",
-    "smoke:local": "node scripts/smoke-local.js"
+    "smoke:local": "node scripts/smoke-local.js",
+    "test:e2e": "node scripts/e2e-day2.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "eslint": "^9.39.5",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.13.0",
+    "playwright": "^1.63.0",
     "prettier": "^3.9.9"
   },
   "type": "module",

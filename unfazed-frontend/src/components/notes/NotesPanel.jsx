@@ -34,6 +34,7 @@ export default function NotesPanel({ clientId }) {
     );
     setRevision((n) => n + 1);
     setError('');
+    setUpgrade(null);
   }
   async function save() {
     setBusy(true);
