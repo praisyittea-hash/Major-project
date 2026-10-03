@@ -37,3 +37,32 @@ test('transactional notification outbox rolls back with domain writes and dispat
   assert.equal(await NotificationJob.countDocuments({ kind: event.kind }), 1);
   assert.equal((await NotificationJob.findOne({ kind: event.kind })).status, 'stubbed');
 });
+import Session from '../src/models/Session.js';
+import { scheduleSessionEvents } from '../src/services/sessionNotificationService.js';
+test('24-hour reminder and completed-session follow-up are queued once, excluding cancelled and pending sessions', async () => {
+  const now = new Date('2030-01-01T12:00:00Z'),
+    therapist = new mongoose.Types.ObjectId();
+  for (const [status, hours] of [
+    ['confirmed', 24],
+    ['confirmed', 25],
+    ['cancelled', 12],
+    ['pending_payment', 12],
+    ['completed', -2],
+  ]) {
+    const start = new Date(now.getTime() + hours * 3600000);
+    await Session.create({
+      therapist,
+      contact: { name: 'Reminder Fixture', email: 'reminder@example.test' },
+      duration: 60,
+      start,
+      end: new Date(start.getTime() + 3600000),
+      status,
+    });
+  }
+  assert.equal(await scheduleSessionEvents(now), 2);
+  assert.equal(await scheduleSessionEvents(now), 0);
+  assert.equal(await DomainEvent.countDocuments({ kind: 'session.reminder' }), 1);
+  assert.equal(await DomainEvent.countDocuments({ kind: 'session.followup' }), 1);
+  await NotificationService.dispatchPending();
+  assert.equal(await NotificationJob.countDocuments({ kind: 'session.reminder' }), 1);
+});

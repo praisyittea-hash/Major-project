@@ -1,3 +1,4 @@
+import { startNotificationWorker } from './src/services/sessionNotificationService.js';
 import { attachChatSocket } from './src/sockets/chatSocket.js';
 import './src/config/loadEnv.js';
 import { app } from './src/app.js';
@@ -15,9 +16,11 @@ const server = app.listen(process.env.PORT || 5000, '0.0.0.0', () =>
 const io = attachSchedulingSocket(server);
 attachChatSocket(io);
 const stopWorker = startReservationWorker();
+const stopNotifications = startNotificationWorker();
 for (const signal of ['SIGINT', 'SIGTERM'])
   process.on(signal, () => {
     stopWorker();
+    stopNotifications();
     io.close();
     server.close(async () => {
       await mongoose.disconnect();

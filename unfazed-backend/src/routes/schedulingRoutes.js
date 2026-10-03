@@ -16,6 +16,7 @@ import {
   sessions,
   waitlist,
   cancelSession,
+  completeSession,
   getBooking,
 } from '../controllers/schedulingController.js';
 export const publicScheduling = Router();
@@ -59,6 +60,7 @@ const router = Router();
 router.use(authenticate, therapistOnly, requireFeature('scheduling'));
 router.get('/sessions', sessions);
 router.post('/sessions/:id/cancel', param('id').isMongoId(), validate, cancelSession);
+router.post('/sessions/:id/complete', param('id').isMongoId(), validate, completeSession);
 router.get('/availability', getAvailability);
 router.put(
   '/availability/weekly',

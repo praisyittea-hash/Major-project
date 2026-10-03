@@ -184,3 +184,16 @@ export async function portalBook(req, res) {
   availabilityChanged(therapist.slug);
   res.status(201).json({ session });
 }
+
+export async function completeSession(req, res) {
+  const owned = await Session.findOne({ _id: req.params.id, therapist: req.therapist.id });
+  if (!owned) throw new HttpError(404, 'Session not found');
+  if (owned.status === 'completed') return res.json({ session: owned });
+  const session = await Session.findOneAndUpdate(
+    { _id: owned.id, therapist: req.therapist.id, status: 'confirmed', end: { $lte: new Date() } },
+    { $set: { status: 'completed' } },
+    { new: true },
+  );
+  if (!session) throw new HttpError(409, 'Only an ended, confirmed session can be completed');
+  res.json({ session });
+}

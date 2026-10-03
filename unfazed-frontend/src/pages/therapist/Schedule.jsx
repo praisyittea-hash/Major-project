@@ -16,6 +16,15 @@ export default function Schedule() {
       .then(({ data }) => setSessions(data.sessions))
       .catch((e) => setError(messageOf(e)));
   }, []);
+  async function complete(id) {
+    try {
+      await api.post(`/scheduling/sessions/${id}/complete`);
+      const { data } = await api.get('/scheduling/sessions');
+      setSessions(data.sessions);
+    } catch (e) {
+      setError(messageOf(e));
+    }
+  }
   async function cancel(id) {
     setBusy(true);
     try {
@@ -107,6 +116,11 @@ export default function Schedule() {
               <p>
                 {s.contact.name} · {new Date(s.start).toLocaleString()} · {s.status}
               </p>
+              {s.status === 'confirmed' && new Date(s.end) <= new Date() && (
+                <button className="secondary" onClick={() => complete(s._id)}>
+                  Mark completed
+                </button>
+              )}
               {s.status !== 'cancelled' && (
                 <button className="secondary" disabled={busy} onClick={() => cancel(s._id)}>
                   Cancel session
