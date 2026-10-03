@@ -6,6 +6,7 @@ const schema = new mongoose.Schema(
     sender: { type: mongoose.Schema.Types.ObjectId, required: true },
     senderRole: { type: String, enum: ['therapist', 'client'], required: true },
     clientMessageId: { type: String, required: true },
+    readAt: Date,
     text: { type: String, required: true, maxLength: 4000 },
   },
   { timestamps: true },

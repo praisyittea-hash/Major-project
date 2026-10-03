@@ -157,3 +157,41 @@ test('reconnecting clients load persisted message history; retry IDs cannot dupl
     .set('Authorization', `Bearer ${clientToken()}`)
     .expect(403);
 });
+test('typing is scoped to the peer and read receipts persist only on peer messages', async () => {
+  const a = socket(issueToken(therapist.id)),
+    b = socket(clientToken());
+  try {
+    await Promise.all([connected(a), connected(b)]);
+    for (const s of [a, b]) await s.timeout(3000).emitWithAck('chat:join', { clientId: client.id });
+    const typing = new Promise((resolve) => b.once('chat:typing', resolve));
+    await a.timeout(3000).emitWithAck('chat:typing', { clientId: client.id, typing: true });
+    assert.equal((await typing).typing, true);
+    const sent = await a.timeout(3000).emitWithAck('chat:send', {
+      clientId: client.id,
+      text: 'Read receipt fixture',
+      clientMessageId: crypto.randomUUID(),
+    });
+    const receipt = new Promise((resolve) => a.once('chat:read', resolve));
+    assert.equal(
+      (
+        await b
+          .timeout(3000)
+          .emitWithAck('chat:read', { clientId: client.id, messageId: sent.message._id })
+      ).ok,
+      true,
+    );
+    assert.equal((await receipt).readerRole, 'client');
+    assert.ok((await ChatMessage.findById(sent.message._id)).readAt);
+    assert.equal(
+      (
+        await b
+          .timeout(3000)
+          .emitWithAck('chat:read', { clientId: client.id, messageId: therapist.id })
+      ).ok,
+      false,
+    );
+  } finally {
+    a.disconnect();
+    b.disconnect();
+  }
+});

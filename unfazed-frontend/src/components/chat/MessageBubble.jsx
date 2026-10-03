@@ -5,6 +5,7 @@ export default function MessageBubble({ message, own }) {
       <small>
         {own ? 'You' : message.senderRole === 'therapist' ? 'Therapist' : 'Client'} ·{' '}
         {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        {own && (message.readAt ? ' · Read' : ' · Sent')}
       </small>
     </article>
   );

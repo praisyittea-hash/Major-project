@@ -15,6 +15,7 @@ export default function ChatWindow({ clientId, role }) {
     try {
       await chat.send(text, pending.current.id);
       setText('');
+      chat.typing(false);
       pending.current = null;
     } catch (e) {
       setError(e.message);
@@ -47,13 +48,19 @@ export default function ChatWindow({ clientId, role }) {
           <p>No messages yet.</p>
         )}
       </div>
+      {chat.peerTyping && (
+        <p role="status">{role === 'therapist' ? 'Client' : 'Therapist'} is typing…</p>
+      )}
       <form onSubmit={submit}>
         <label>
           Message
           <textarea
             maxLength={4000}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              chat.typing(true);
+            }}
             rows={3}
           />
         </label>
