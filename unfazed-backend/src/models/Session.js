@@ -20,7 +20,7 @@ const schema = new mongoose.Schema(
     rate: { type: Number, min: 0, validate: Number.isSafeInteger, default: 0 },
     status: {
       type: String,
-      enum: ['confirmed', 'pending_payment', 'cancelled', 'completed'],
+      enum: ['confirmed', 'pending_payment', 'cancelled', 'completed', 'no_show'],
       default: 'confirmed',
     },
     paymentStatus: {

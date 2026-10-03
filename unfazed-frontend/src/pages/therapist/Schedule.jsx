@@ -17,6 +17,15 @@ export default function Schedule() {
       .then(({ data }) => setSessions(data.sessions))
       .catch((e) => setError(messageOf(e)));
   }, []);
+  async function noShow(id) {
+    try {
+      await api.post(`/scheduling/sessions/${id}/no-show`);
+      const { data } = await api.get('/scheduling/sessions');
+      setSessions(data.sessions);
+    } catch (e) {
+      setError(messageOf(e));
+    }
+  }
   async function complete(id) {
     try {
       await api.post(`/scheduling/sessions/${id}/complete`);
@@ -125,6 +134,11 @@ export default function Schedule() {
               {s.status === 'confirmed' && new Date(s.end) <= new Date() && (
                 <button className="secondary" onClick={() => complete(s._id)}>
                   Mark completed
+                </button>
+              )}
+              {s.status === 'confirmed' && new Date(s.end) <= new Date() && (
+                <button className="secondary" onClick={() => noShow(s._id)}>
+                  Mark no-show
                 </button>
               )}
               {s.status !== 'cancelled' && (

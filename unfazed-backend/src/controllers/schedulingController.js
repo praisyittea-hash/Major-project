@@ -197,3 +197,16 @@ export async function completeSession(req, res) {
   if (!session) throw new HttpError(409, 'Only an ended, confirmed session can be completed');
   res.json({ session });
 }
+
+export async function noShowSession(req, res) {
+  const owned = await Session.findOne({ _id: req.params.id, therapist: req.therapist.id });
+  if (!owned) throw new HttpError(404, 'Session not found');
+  if (owned.status === 'no_show') return res.json({ session: owned });
+  const session = await Session.findOneAndUpdate(
+    { _id: owned.id, therapist: req.therapist.id, status: 'confirmed', end: { $lte: new Date() } },
+    { $set: { status: 'no_show' } },
+    { new: true },
+  );
+  if (!session) throw new HttpError(409, 'Only an ended, confirmed session can be marked no-show');
+  res.json({ session });
+}

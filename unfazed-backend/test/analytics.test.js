@@ -92,3 +92,71 @@ test('revenue trend and active clients are aggregated from persisted, tenant-sco
   await request(app).get('/api/analytics?from=2030-02-01&to=2030-01-01').set(auth).expect(400);
   await request(app).get('/api/analytics?from=2020-01-01&to=2030-01-01').set(auth).expect(400);
 });
+import Session from '../src/models/Session.js';
+test('no-show rate is calculated by MongoDB over finalized outcomes; cancelled and unresolved sessions are excluded', async () => {
+  for (const [n, status] of [
+    'completed',
+    'completed',
+    'no_show',
+    'cancelled',
+    'confirmed',
+    'pending_payment',
+  ].entries()) {
+    await Session.create({
+      therapist: therapist.id,
+      client: client.id,
+      contact: { name: client.name, email: client.email },
+      duration: 60,
+      start: new Date(`2020-01-${10 + n}T10:00:00Z`),
+      end: new Date(`2020-01-${10 + n}T11:00:00Z`),
+      status,
+    });
+  }
+  const response = await request(app)
+    .get('/api/analytics?from=2020-01-01&to=2020-01-31&depth=advanced')
+    .set(auth)
+    .expect(200);
+  assert.equal(response.body.attendance.outcomes, 3);
+  assert.equal(response.body.attendance.noShows, 1);
+  assert.ok(Math.abs(response.body.attendance.noShowRate - 100 / 3) < 0.001);
+  assert.equal(response.body.attendanceTrend[0].period, '2020-01');
+  const empty = await request(app)
+    .get('/api/analytics?from=2020-02-01&to=2020-02-28')
+    .set(auth)
+    .expect(200);
+  assert.equal(empty.body.attendance.noShowRate, 0);
+});
+test('only the owning therapist can mark attendance after a confirmed session has ended', async () => {
+  const session = await Session.create({
+    therapist: therapist.id,
+    client: client.id,
+    contact: { name: client.name, email: client.email },
+    duration: 60,
+    start: new Date('2020-02-01T10:00:00Z'),
+    end: new Date('2020-02-01T11:00:00Z'),
+    status: 'confirmed',
+  });
+  const other = await Therapist.findOne({ email: 'otheranalytics@example.test' });
+  await request(app)
+    .post(`/api/scheduling/sessions/${session.id}/no-show`)
+    .set('Authorization', `Bearer ${issueToken(other.id)}`)
+    .expect(404);
+  await request(app)
+    .post(`/api/scheduling/sessions/${session.id}/no-show`)
+    .set(
+      'Authorization',
+      `Bearer ${issueToken(client.id, 'client', { therapistId: therapist.id })}`,
+    )
+    .expect(403);
+  await request(app).post(`/api/scheduling/sessions/${session.id}/no-show`).set(auth).expect(200);
+  await request(app).post(`/api/scheduling/sessions/${session.id}/complete`).set(auth).expect(409);
+  const future = await Session.create({
+    therapist: therapist.id,
+    contact: { name: client.name, email: client.email },
+    duration: 60,
+    start: new Date('2090-01-01T10:00:00Z'),
+    end: new Date('2090-01-01T11:00:00Z'),
+    status: 'confirmed',
+  });
+  await request(app).post(`/api/scheduling/sessions/${future.id}/no-show`).set(auth).expect(409);
+});
