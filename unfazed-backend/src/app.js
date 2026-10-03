@@ -1,3 +1,4 @@
+import chatRoutes from './routes/chatRoutes.js';
 import mongoose from 'mongoose';
 import express from 'express';
 import cors from 'cors';
@@ -66,6 +67,7 @@ app.use('/api/portal', portalRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/notes', noteRoutes);
+app.use('/api/chat', chatRoutes);
 app.use(express.static(fileURLToPath(new URL('../../unfazed-frontend/dist', import.meta.url))));
 app.get('/:slug', async (req, res, next) => {
   const therapist = await Therapist.findOne({ slug: req.params.slug });

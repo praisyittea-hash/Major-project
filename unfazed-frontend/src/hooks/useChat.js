@@ -1,8 +1,28 @@
+import clientApi from '../api/clientApi.js';
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import api from '../api/axiosInstance.js';
 export default function useChat(clientId, role) {
   const socketRef = useRef(null);
+  const [nextCursor, setNextCursor] = useState(null);
+  const http = role === 'client' ? clientApi : api;
+  const merge = (incoming) =>
+    setMessages((items) =>
+      [...new Map([...items, ...incoming].map((item) => [item._id, item])).values()].sort((a, b) =>
+        a._id.localeCompare(b._id),
+      ),
+    );
+  async function loadOlder() {
+    try {
+      const { data } = await http.get(`/chat/${clientId}/messages`, {
+        params: nextCursor ? { before: nextCursor } : {},
+      });
+      merge(data.messages);
+      setNextCursor(data.nextCursor);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
   const [messages, setMessages] = useState([]),
     [connected, setConnected] = useState(false),
     [error, setError] = useState('');
@@ -23,6 +43,9 @@ export default function useChat(clientId, role) {
       try {
         const result = await socket.timeout(5000).emitWithAck('chat:join', { clientId });
         if (!result.ok) throw new Error(result.message);
+        const { data } = await http.get(`/chat/${clientId}/messages`);
+        merge(data.messages);
+        setNextCursor(data.nextCursor);
         setConnected(true);
         setError('');
       } catch (e) {
@@ -46,5 +69,5 @@ export default function useChat(clientId, role) {
       items.some((item) => item._id === result.message._id) ? items : [...items, result.message],
     );
   }
-  return { messages, connected, error, send };
+  return { messages, connected, error, send, nextCursor, loadOlder };
 }

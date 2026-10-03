@@ -33,6 +33,11 @@ export default function ChatWindow({ clientId, role }) {
           {error || chat.error}
         </p>
       )}
+      {chat.nextCursor && (
+        <button className="secondary" onClick={chat.loadOlder}>
+          Load earlier messages
+        </button>
+      )}
       <div className="chat-history" role="log" aria-label="Conversation" aria-live="polite">
         {chat.messages.length ? (
           chat.messages.map((message) => (

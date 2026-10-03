@@ -1,3 +1,5 @@
+import request from 'supertest';
+import ChatMessage from '../src/models/ChatMessage.js';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -24,6 +26,7 @@ before(async () => {
     name: 'Chat Client',
     email: 'chatclient@example.test',
   });
+  await ChatMessage.init();
   server = createServer(app);
   io = attachSchedulingSocket(server);
   attachChatSocket(io);
@@ -115,4 +118,42 @@ test('only the owning therapist and client can join a conversation; messages arr
     b.disconnect();
     c.disconnect();
   }
+});
+
+test('reconnecting clients load persisted message history; retry IDs cannot duplicate or alter a message', async () => {
+  const a = socket(issueToken(therapist.id));
+  try {
+    await connected(a);
+    const payload = {
+      clientId: client.id,
+      text: 'Survives refresh',
+      clientMessageId: crypto.randomUUID(),
+    };
+    const first = await a.timeout(3000).emitWithAck('chat:send', payload);
+    const second = await a.timeout(3000).emitWithAck('chat:send', payload);
+    assert.equal(first.ok, true);
+    assert.equal(first.message._id, second.message._id);
+    assert.equal(
+      (await a.timeout(3000).emitWithAck('chat:send', { ...payload, text: 'Tampered retry' })).ok,
+      false,
+    );
+    assert.equal(await ChatMessage.countDocuments({ clientMessageId: payload.clientMessageId }), 1);
+  } finally {
+    a.disconnect();
+  }
+  for (const token of [issueToken(therapist.id), clientToken()]) {
+    const reconnected = socket(token);
+    await connected(reconnected);
+    reconnected.disconnect();
+    const response = await request(app)
+      .get(`/api/chat/${client.id}/messages`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    assert.ok(response.body.messages.some((message) => message.text === 'Survives refresh'));
+  }
+  await request(app).get(`/api/chat/${client.id}/messages`).expect(401);
+  await request(app)
+    .get(`/api/chat/${therapist.id}/messages`)
+    .set('Authorization', `Bearer ${clientToken()}`)
+    .expect(403);
 });

@@ -1,5 +1,4 @@
-import { randomUUID } from 'node:crypto';
-import { conversationAccess, messageText } from '../services/chatService.js';
+import { conversationAccess, persistMessage } from '../services/chatService.js';
 import { readToken } from '../services/tokenService.js';
 import Therapist from '../models/Therapist.js';
 import Client from '../models/Client.js';
@@ -49,14 +48,7 @@ export function attachChatSocket(io) {
       return { room: conversation.room };
     });
     handle('chat:send', async (payload, conversation, auth) => {
-      const message = {
-        _id: randomUUID(),
-        client: conversation.client,
-        sender: auth.sub,
-        senderRole: auth.role,
-        text: messageText(payload.text),
-        createdAt: new Date().toISOString(),
-      };
+      const message = await persistMessage(conversation, auth, payload);
       chat.to(conversation.room).emit('chat:message', message);
       return { message };
     });
