@@ -40,3 +40,30 @@ test('therapist can still view both halves of existing legacy notes', () => {
   expect(screen.getByText('Legacy private record')).toBeTruthy();
   expect(screen.getByText('Legacy shared record')).toBeTruthy();
 });
+test('SOAP and DAP notes display each structured field', () => {
+  render(
+    <>
+      <NoteContent
+        note={{
+          format: 'soap',
+          content: {
+            subjective: 'Report',
+            objective: 'Observed',
+            assessment: 'SOAP assessment',
+            plan: 'SOAP plan',
+          },
+        }}
+      />
+      <NoteContent
+        note={{
+          format: 'dap',
+          content: { data: 'DAP data', assessment: 'DAP assessment', plan: 'DAP plan' },
+        }}
+      />
+    </>,
+  );
+  expect(screen.getByText('Report')).toBeTruthy();
+  expect(screen.getByText('Observed')).toBeTruthy();
+  expect(screen.getByText('DAP data')).toBeTruthy();
+  expect(screen.getByText('DAP plan')).toBeTruthy();
+});

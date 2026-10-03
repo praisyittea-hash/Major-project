@@ -172,3 +172,33 @@ test('SOAP template persists validated structured fields and can be shared with 
     .send({ format: 'freeform' })
     .expect(400);
 });
+test('DAP notes support editing and enforce the same private/shared boundary as freeform', async () => {
+  const content = {
+    data: 'DAP private clinical observation',
+    assessment: 'Assessment',
+    plan: 'Plan',
+  };
+  const created = await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(auth)
+    .send({ type: 'private', format: 'dap', content })
+    .expect(201);
+  const clientAuth = {
+    Authorization: `Bearer ${issueToken(client.id, 'client', { therapistId: therapist.id })}`,
+  };
+  let response = await request(app).get('/api/portal/notes').set(clientAuth).expect(200);
+  assert.ok(!response.text.includes(content.data));
+  await request(app)
+    .patch(`/api/notes/${created.body.note._id}`)
+    .set(auth)
+    .send({ type: 'shared', content: { ...content, data: 'Agreed DAP reflection' } })
+    .expect(200);
+  response = await request(app).get('/api/portal/notes').set(clientAuth).expect(200);
+  assert.ok(response.text.includes('Agreed DAP reflection'));
+  assert.ok(!response.text.includes(content.data));
+  await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(auth)
+    .send({ format: 'dap', content: { ...content, subjective: 'Wrong format' } })
+    .expect(400);
+});

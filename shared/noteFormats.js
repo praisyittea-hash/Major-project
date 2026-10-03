@@ -1,5 +1,6 @@
 export const noteFormats = {
   freeform: { label: 'Freeform', fields: [] },
+  dap: { label: 'DAP', fields: ['data', 'assessment', 'plan'] },
   soap: { label: 'SOAP', fields: ['subjective', 'objective', 'assessment', 'plan'] },
 };
 export function emptyContent(format) {

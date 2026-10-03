@@ -1,3 +1,4 @@
+import { noteFormats } from '../../../shared/noteFormats.js';
 import { Router } from 'express';
 import { body, param } from 'express-validator';
 import { authenticate, therapistOnly } from '../middleware/authMiddleware.js';
@@ -16,7 +17,7 @@ router.use(authenticate, therapistOnly, requireFeature('crm'));
 const input = [
   body('type').optional().isIn(['private', 'shared']),
   body('title').optional().isString().trim().isLength({ max: 200 }),
-  body('format').optional().isIn(['freeform', 'soap']),
+  body('format').optional().isIn(Object.keys(noteFormats)),
   body('content').optional().isObject(),
   body('session').optional().isMongoId(),
   body().custom(

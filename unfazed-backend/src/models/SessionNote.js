@@ -1,3 +1,4 @@
+import { noteFormats } from '../../../shared/noteFormats.js';
 import mongoose from 'mongoose';
 // Legacy fields remain readable so existing CRM records are never discarded.
 const schema = new mongoose.Schema(
@@ -6,7 +7,7 @@ const schema = new mongoose.Schema(
     client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
     session: { type: mongoose.Schema.Types.ObjectId, ref: 'Session' },
     type: { type: String, enum: ['private', 'shared'], default: 'private', required: true },
-    format: { type: String, enum: ['freeform', 'soap'], default: 'freeform' },
+    format: { type: String, enum: Object.keys(noteFormats), default: 'freeform' },
     title: { type: String, trim: true, maxLength: 200, default: '' },
     content: { type: mongoose.Schema.Types.Mixed, select: false },
     privateContent: { type: String, select: false },
