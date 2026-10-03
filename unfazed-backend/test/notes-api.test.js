@@ -143,3 +143,32 @@ test('direct client-facing notes and history APIs return shared content and neve
     .expect(200);
   assert.deepEqual(ownOnly.body.notes, []);
 });
+test('SOAP template persists validated structured fields and can be shared with its client', async () => {
+  const content = {
+    subjective: 'Client report',
+    objective: 'Observation',
+    assessment: 'Working assessment',
+    plan: 'Agreed plan',
+  };
+  const created = await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(auth)
+    .send({ type: 'shared', format: 'soap', content })
+    .expect(201);
+  assert.deepEqual(created.body.note.content, content);
+  await request(app)
+    .patch(`/api/notes/${created.body.note._id}`)
+    .set(auth)
+    .send({ content: { ...content, plan: 'Updated plan' } })
+    .expect(200);
+  await request(app)
+    .post(`/api/notes/client/${client.id}`)
+    .set(auth)
+    .send({ format: 'soap', content: { subjective: 'Missing fields' } })
+    .expect(400);
+  await request(app)
+    .patch(`/api/notes/${created.body.note._id}`)
+    .set(auth)
+    .send({ format: 'freeform' })
+    .expect(400);
+});

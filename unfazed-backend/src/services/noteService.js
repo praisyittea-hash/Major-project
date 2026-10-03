@@ -1,3 +1,4 @@
+import { noteFormats } from '../../../shared/noteFormats.js';
 import SessionNote from '../models/SessionNote.js';
 import Client from '../models/Client.js';
 import Session from '../models/Session.js';
@@ -80,4 +81,22 @@ export function validateRichText(document) {
     );
   }
   return document?.type === 'doc' && JSON.stringify(document).length <= 45000 && visit(document);
+}
+
+export function validateNoteContent(note) {
+  const format = note.format || 'freeform';
+  const content = note.content;
+  const fields = noteFormats[format]?.fields;
+  const valid =
+    format === 'freeform'
+      ? validateRichText(content)
+      : fields &&
+        content &&
+        typeof content === 'object' &&
+        !Array.isArray(content) &&
+        Object.keys(content).length === fields.length &&
+        fields.every((key) => typeof content[key] === 'string' && content[key].length <= 10000) &&
+        fields.some((key) => content[key].trim()) &&
+        Object.keys(content).every((key) => fields.includes(key));
+  if (!valid) throw new HttpError(400, 'Please supply valid content for the selected note format');
 }

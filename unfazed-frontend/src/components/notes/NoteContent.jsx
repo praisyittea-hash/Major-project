@@ -1,3 +1,4 @@
+import { noteFormats } from '../../../../shared/noteFormats.js';
 import { createElement } from 'react';
 const tags = {
   doc: 'div',
@@ -34,6 +35,19 @@ function renderNode(node, key) {
   );
 }
 export default function NoteContent({ note }) {
+  if (note.content && noteFormats[note.format]?.fields.length)
+    return (
+      <dl>
+        {noteFormats[note.format].fields.map((key) => (
+          <div key={key}>
+            <dt>
+              <strong>{key[0].toUpperCase() + key.slice(1)}</strong>
+            </dt>
+            <dd style={{ whiteSpace: 'pre-wrap' }}>{note.content[key]}</dd>
+          </div>
+        ))}
+      </dl>
+    );
   if (note.content) return <div className="note-content">{renderNode(note.content, 'doc')}</div>;
   return (
     <div style={{ whiteSpace: 'pre-wrap' }}>

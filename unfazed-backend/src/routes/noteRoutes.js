@@ -9,15 +9,15 @@ import {
   ownedNote,
   noteInput,
   validateNoteReferences,
-  validateRichText,
+  validateNoteContent,
 } from '../services/noteService.js';
 const router = Router();
 router.use(authenticate, therapistOnly, requireFeature('crm'));
 const input = [
   body('type').optional().isIn(['private', 'shared']),
   body('title').optional().isString().trim().isLength({ max: 200 }),
-  body('format').optional().isIn(['freeform']),
-  body('content').optional().custom(validateRichText),
+  body('format').optional().isIn(['freeform', 'soap']),
+  body('content').optional().isObject(),
   body('session').optional().isMongoId(),
   body().custom(
     (value) =>
@@ -44,6 +44,7 @@ router.post(
   validate,
   async (req, res) => {
     await validateNoteReferences(req.therapist.id, req.params.clientId, req.body.session);
+    validateNoteContent(req.body);
     const note = await SessionNote.create({
       ...noteInput(req.body),
       therapist: req.therapist.id,
@@ -58,6 +59,7 @@ router.get('/:id', param('id').isMongoId(), validate, async (req, res) =>
 router.patch('/:id', param('id').isMongoId(), ...input, validate, async (req, res) => {
   const note = await ownedNote(req.therapist.id, req.params.id);
   await validateNoteReferences(req.therapist.id, note.client, req.body.session || note.session);
+  validateNoteContent({ ...note.toObject(), ...noteInput(req.body) });
   Object.assign(note, noteInput(req.body));
   await note.save();
   res.json({ note });
